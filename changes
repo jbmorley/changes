@@ -151,19 +151,27 @@ TYPE_TO_SECTION = {
 }
 
 
-def format_changes(changes, heading="#"):
+def format_messages(messages, section):
+    result = ""
+    result = result + f"**{section}**\n\n"
+    for message in messages:
+        result = result + f"- {message.description}"
+        if message.scope is not None:
+            result = result + f" ({message.scope})"
+        result = result + "\n"
+    result = result + "\n"
+    return result
+
+
+def format_changes(changes):
     result = ""
     sections = collections.defaultdict(list)
     for commit in changes:
         sections[TYPE_TO_SECTION[commit.message.type]].append(commit.message)
-    for section, messages in sections.items():
-        result = result + f"{heading} {section}\n\n"
-        for message in messages:
-            result = result + f"- {message.description}"
-            if message.scope is not None:
-                result = result + f" ({message.scope})"
-            result = result + "\n"
-        result = result + "\n"
+    if "Changes" in sections:
+        result = result + format_messages(sections["Changes"], "Changes")
+    if "Fixes" in sections:
+        result = result + format_messages(sections["Fixes"], "Fixes")
     return result
 
 
@@ -176,7 +184,6 @@ class Release(object):
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("changelog", help="changelog to update")
     parser.add_argument("command", choices=["current-version", "current-changes", "tagged-version", "tag"])
     parser.add_argument("--scope", help="scope to be used in tags and commit messages")
     options = parser.parse_args()
@@ -189,10 +196,9 @@ def main():
         if change.version is not None:
             releases.append(Release(change.version, []))
         releases[-1].changes.append(change)
-    print(releases)
     for release in releases:
-        print(f"# {release.version}")
-        print(format_changes(release.changes, heading="##"))
+        print(f"# {release.version}\n")
+        print(format_changes(release.changes))
     exit()
 
     # Get all the commits up to and including the most recent commit tagged with a version.
