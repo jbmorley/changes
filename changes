@@ -196,7 +196,20 @@ class Release(object):
     def __init__(self, version, changes):
         self.version = version
         self.changes = changes
-        self.has_tag = False
+        self.has_tag = False  # TODO: Rename this to 'unreleased'
+
+    def set_previous_version(self, previous_version):
+        """Recomputes the current version based on the previous version by applying the changes in order."""
+        self.version = copy.deepcopy(previous_version)
+        for commit in reversed(self.changes):
+            if commit.message.type in OPERATIONS:
+                OPERATIONS[commit.message.type](commit, self.version)
+            else:
+                logging.warning("Ignoring unknown commit: '%s'", commit.message.description)
+
+    @property
+    def is_empty(self):
+        return len(self.changes) < 1
 
 
 def main():
@@ -215,6 +228,15 @@ def main():
             release.has_tag = True
             releases.append(release)
         releases[-1].changes.append(change)
+
+    # Fix-up the version number for any un-released current release.
+    if releases[0].version is None:
+        releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 1, 0))
+
+    # Remove the empty head release if there's already an active release.
+    if len(releases) > 1 and releases[0].is_empty:
+        releases.pop(0)
+
     print(format_releases(releases))
 
     exit()
