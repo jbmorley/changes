@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import collections
 import copy
 import enum
 import logging
@@ -82,6 +83,13 @@ class Commit(object):
         self.version = version
 
 
+class Type(enum.Enum):
+    FEATURE = "feat"
+    FIX = "fix"
+    BREAKING_CHANGE = "BREAKING CHANGE"
+    UNKNOWN = "UNKNOWN"
+
+
 def version_from_tags(tags, scope=None):
     for tag in tags:
         try:
@@ -89,7 +97,6 @@ def version_from_tags(tags, scope=None):
         except ValueError:
             pass
     return None
-
 
 
 def get_commits(ref, scope=None, stop=lambda x: False):
@@ -102,13 +109,6 @@ def get_commits(ref, scope=None, stop=lambda x: False):
         if stop(commit):
             return results
     return results
-
-
-class Type(enum.Enum):
-    FEATURE = "feat"
-    FIX = "fix"
-    BREAKING_CHANGE = "BREAKING CHANGE"
-    UNKNOWN = "UNKNOWN"
 
 
 OPERATIONS = {
@@ -143,14 +143,57 @@ def parse_message(message):
                    description=message.strip())
 
 
+TYPE_TO_SECTION = {
+    Type.BREAKING_CHANGE: "Changes",
+    Type.FEATURE: "Changes",
+    Type.FIX: "Fixes",
+    Type.UNKNOWN: "Ignore",
+}
+
+
+def format_changes(changes, heading="#"):
+    result = ""
+    sections = collections.defaultdict(list)
+    for commit in changes:
+        sections[TYPE_TO_SECTION[commit.message.type]].append(commit.message)
+    for section, messages in sections.items():
+        result = result + f"{heading} {section}\n\n"
+        for message in messages:
+            result = result + f"- {message.description}"
+            if message.scope is not None:
+                result = result + f" ({message.scope})"
+            result = result + "\n"
+        result = result + "\n"
+    return result
+
+
+class Release(object):
+
+    def __init__(self, version, changes):
+        self.version = version
+        self.changes = changes
+
+
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("changelog", help="changelog to update")
-    parser.add_argument("command", choices=["current-version", "current-changes", "tagged-version", "tag-release"])
+    parser.add_argument("command", choices=["current-version", "current-changes", "tagged-version", "tag"])
     parser.add_argument("--scope", help="scope to be used in tags and commit messages")
     options = parser.parse_args()
 
-    cc_parser = re.compile(r"^(.+?):.+")
+    all_changes = get_commits("main", scope=options.scope)
+
+    releases = []
+    releases.append(Release(None, []))
+    for change in all_changes:
+        if change.version is not None:
+            releases.append(Release(change.version, []))
+        releases[-1].changes.append(change)
+    print(releases)
+    for release in releases:
+        print(f"# {release.version}")
+        print(format_changes(release.changes, heading="##"))
+    exit()
 
     # Get all the commits up to and including the most recent commit tagged with a version.
     changes = get_commits("main", scope=options.scope, stop=lambda x: x.version is not None)
@@ -179,11 +222,11 @@ def main():
     if options.command == "current-version":
         print(version)
     elif options.command =="current-changes":
-        for commit in changes:
-            print(commit.message)
+        markdown = format_changes(changes)
+        print(markdown)
     elif options.command == "tagged-version":
         print(initial_version)
-    elif options.command == "tag-release":
+    elif options.command == "tag":
         # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
         tag = str(version)
         if options.scope is not None:
@@ -193,3 +236,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# TODO: Both current changes and current version should be able to show the 'previous' if current matches previous.
