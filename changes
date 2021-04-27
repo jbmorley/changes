@@ -242,8 +242,7 @@ def main():
     if options.command == "current-version":
         print(releases[0].version)
     elif options.command =="current-changes":
-        markdown = format_changes(changes)
-        print(markdown)
+        print(format_changes(releases[0].changes), end="")
     elif options.command == "tagged-version":
         print(initial_version)
     elif options.command == "tag":
