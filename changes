@@ -241,13 +241,17 @@ def command_release(parser):
     parser.add_argument("--command", help="command to run to perform the release")
     parser.add_argument("--push", action="store_true", default=False, help="push the newly created tag")
     def perform(options, releases):
-        pass
-        # logging.error("No unreleased versions")
-        # exit(1)
-        # tag = str(version)
-        # if options.scope is not None:
-        #     tag = f"{options.scope}_{tag}"
-        # run(["git", "tag", str(version)])
+        if releases[0].has_tag:
+            # There aren't any unreleased versions.
+            if options.skip_if_empty:
+                exit()
+            logging.error("No versions to release.")
+            exit(1)
+        version = releases[0].version
+        tag = str(version)
+        if options.scope is not None:
+            tag = f"{options.scope}_{tag}"
+        run(["git", "tag", str(version)])
     return perform
 
 
