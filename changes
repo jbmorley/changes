@@ -175,11 +175,28 @@ def format_changes(changes):
     return result
 
 
+def format_release(release):
+    result = f"# {release.version}"
+    if not release.has_tag:
+        result = result + " (Unreleased)"
+    result = result + "\n\n"
+    result = result + format_changes(release.changes)
+    return result
+
+
+def format_releases(releases):
+    result = ""
+    for release in releases:
+        result = result + format_release(release)
+    return result
+
+
 class Release(object):
 
     def __init__(self, version, changes):
         self.version = version
         self.changes = changes
+        self.has_tag = False
 
 
 def main():
@@ -194,11 +211,12 @@ def main():
     releases.append(Release(None, []))
     for change in all_changes:
         if change.version is not None:
-            releases.append(Release(change.version, []))
+            release = Release(change.version, [])
+            release.has_tag = True
+            releases.append(release)
         releases[-1].changes.append(change)
-    for release in releases:
-        print(f"# {release.version}\n")
-        print(format_changes(release.changes))
+    print(format_releases(releases))
+
     exit()
 
     # Get all the commits up to and including the most recent commit tagged with a version.
