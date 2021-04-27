@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
+import enum
+import logging
 import re
 import subprocess
 
@@ -11,18 +14,30 @@ class Version(object):
         self.major = major
         self.minor = minor
         self.patch = patch
+        self.did_update_major = False
+        self.did_update_minor = False
+        self.did_update_patch = False
 
     def bump_major(self):
+        if self.did_update_major:
+            return
         self.major = self.major + 1
         self.minor = 0
         self.patch = 0
+        self.did_update_major = True
 
     def bump_minor(self):
+        if self.did_update_minor:
+            return
         self.minor = self.minor + 1
         self.patch = 0
+        self.did_update_minor = True
 
     def bump_patch(self):
+        if self.did_update_patch:
+            return
         self.patch = self.patch + 1
+        self.did_update_patch = True
 
     def __str__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
@@ -52,6 +67,16 @@ def tags(ref):
     return result
 
 
+def parse_version(tag):
+    sv_parser = re.compile(r"^(\d+).(\d+).(\d+)$")
+    match = sv_parser.match(tag)
+    if match:
+        return Version(major=int(match.group(1)),
+                       minor=int(match.group(2)),
+                       patch=int(match.group(3)))
+    raise ValueError("Not a version")
+
+
 def latest_version(ref):
     # Iterate over the tags in the current branch and stop at the first valid version.
     sv_parser = re.compile(r"^(\d+).(\d+).(\d+)$")
@@ -66,72 +91,94 @@ def latest_version(ref):
     return Version()
 
 
-OPERATIONS = {
-    "BREAKING CHANGE": lambda x: x.bump_major(),
-    "feat": lambda x: x.bump_minor(),
-    "fix": lambda x: x.bump_patch(),
-}
-
-
 class Commit(object):
 
     def __init__(self, sha, message, tags):
         self.sha = sha
         self.message = message
         self.tags = tags
+        self.version = None
+        for tag in tags:
+            try:
+                self.version = parse_version(tag)
+                break
+            except ValueError:
+                pass
 
 
-def get_commit(sha):
-    details = run(["git", "log", "--pretty=format:%H:%s", "--max-count", "1", sha])[0]
-    sha, message = details.split(":", 1)
-    return Commit(sha, message, get_tags(sha))
-
-
-def get_commits(ref):
+def get_commits(ref, stop=lambda x: False):
     results = []
     commits = run(["git", "log", "--pretty=format:%H:%s", ref])
-    for commit in commits:
-        sha, message = commit.split(":", 1)
-        results.append(Commit(sha, message, get_tags(sha)))
+    for c in commits:
+        sha, message = c.split(":", 1)
+        commit = Commit(sha, message, get_tags(sha))
+        results.append(commit)
+        if stop(commit):
+            return results
     return results
+
+
+class Type(enum.Enum):
+    FEATURE = "feat"
+    FIX = "fix"
+    BREAKING_CHANGE = "BREAKING CHANGE"
+    UNKNOWN = "UNKNOWN"
+
+
+OPERATIONS = {
+    Type.BREAKING_CHANGE.value: lambda x: x.bump_major(),
+    Type.FEATURE.value: lambda x: x.bump_minor(),
+    Type.FIX.value: lambda x: x.bump_patch(),
+    Type.UNKNOWN.value: lambda x: None,
+}
 
 
 def main():
     parser = argparse.ArgumentParser()
+    # parser.add_argument("changelog", help="changelog to update")
+    parser.add_argument("command", choices=["derived-version", "derived-changes", "last-tagged-version", "create-release"])
     parser.add_argument("--namespace", help="namespace to be used in tags and commit messages")
-    parser.add_argument("--skip-tags", action="store_true", default=False, help="ignore existing tags")
     options = parser.parse_args()
 
     cc_parser = re.compile(r"^(.+?):.+")
 
-    for commit in get_commits("main"):
-        print(commit)
-        print(commit.tags)
-    exit()
+    # Get all the commits up to and including the most recent commit tagged with a version.
+    changes = get_commits("main", stop=lambda x: x.version is not None)
+    changes.reverse()
 
+    # Determine the starting version by checking to see if the first commit has a version tag.
+    # If it does, update the version and discard the first tag as we assume any change it describes is already captured
+    # in that version.
+    initial_version = Version()
+    first_commit = changes[0]
+    if first_commit.version is not None:
+        initial_version = first_commit.version
+        changes = changes[1:]
+    version = copy.deepcopy(initial_version)
 
+    logging.debug(f"{version} (current release)")
 
-    # TODO: Support namespaces.
-    version = Version()
-    if not options.skip_tags:
-        version = latest_version("main")
-    print(f"Starting version = {version}")
-
-    logs = reversed(subprocess.check_output(["git", "log", "--pretty=format:%s"]).decode("utf-8").split("\n"))
-    for log in logs:
-        result = cc_parser.match(log)
-        if result:
-            commit_type = result.group(1)
+    # Walk the commits to determine the next version.
+    for commit in changes:
+        match = cc_parser.match(commit.message)
+        if match is not None:
+            commit_type = match.group(1)
             operation = OPERATIONS[commit_type]
             operation(version)
-            print(f"{version} ({commit_type})")
         else:
-            print("Not sure what to do with this log line?")
-        print(log)
+            logging.warning("Ignoring unknown commit: '%s'", commit.message)
 
-
-
-
+    # Output the relevant information.
+    if options.command == "derived-version":
+        print(version)
+    elif options.command =="derived-changes":
+        for commit in changes:
+            print(commit.message)
+    elif options.command == "last-tagged-version":
+        print(initial_version)
+    elif options.command == "create-release":
+        # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
+        run(["git", "tag", str(version)])
 
 
 if __name__ == "__main__":
