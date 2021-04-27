@@ -136,7 +136,7 @@ OPERATIONS = {
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("changelog", help="changelog to update")
-    parser.add_argument("command", choices=["derived-version", "derived-changes", "last-tagged-version", "create-release"])
+    parser.add_argument("command", choices=["current-version", "current-changes", "last-tagged-version", "tag-release"])
     parser.add_argument("--namespace", help="namespace to be used in tags and commit messages")
     options = parser.parse_args()
 
@@ -169,14 +169,14 @@ def main():
             logging.warning("Ignoring unknown commit: '%s'", commit.message)
 
     # Output the relevant information.
-    if options.command == "derived-version":
+    if options.command == "current-version":
         print(version)
-    elif options.command =="derived-changes":
+    elif options.command =="current-changes":
         for commit in changes:
             print(commit.message)
     elif options.command == "last-tagged-version":
         print(initial_version)
-    elif options.command == "create-release":
+    elif options.command == "tag-release":
         # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
         run(["git", "tag", str(version)])
 
