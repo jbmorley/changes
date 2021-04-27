@@ -7,6 +7,11 @@ import enum
 import logging
 import re
 import subprocess
+import sys
+
+
+verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
+logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
 
 
 class Version(object):
@@ -212,14 +217,69 @@ class Release(object):
         return len(self.changes) < 1
 
 
+def command_current_version(parser):
+    def perform(options, releases):
+        print(releases[0].version)
+    return perform
+
+
+def command_current_changes(parser):
+    def perform(options, releases):
+        print(format_changes(releases[0].changes), end="")
+    return perform
+
+
+def command_released_version(parser):
+    def perform(options, releases):
+        active_release = next(release for release in releases if release.has_tag)
+        print(active_release.version)
+    return perform
+
+
+def command_release(parser):
+    parser.add_argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release")
+    parser.add_argument("--command", help="command to run to perform the release")
+    parser.add_argument("--push", action="store_true", default=False, help="push the newly created tag")
+    def perform(options, releases):
+        pass
+        # logging.error("No unreleased versions")
+        # exit(1)
+        # tag = str(version)
+        # if options.scope is not None:
+        #     tag = f"{options.scope}_{tag}"
+        # run(["git", "tag", str(version)])
+    return perform
+
+
+def command_all_changes(parser):
+    def perform(options, releases):
+        print(format_releases(releases), end="")
+    return perform
+
+
+COMMANDS = {
+    "current-version": (command_current_version, "a"),
+    "current-changes": (command_current_changes, "a"),
+    "released-version": (command_released_version, "a"),
+    "release": (command_release, "a"),
+    "all-changes": (command_all_changes, "a"),
+}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["current-version", "current-changes", "released-version", "tag", "all-changes"])
     parser.add_argument("--scope", help="scope to be used in tags and commit messages")
+    parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
+    subparsers = parser.add_subparsers(help="command")
+    for command, details in COMMANDS.items():
+        subparser = subparsers.add_parser(command, help=details[1])
+        subparser.set_defaults(fn=details[0](subparser))
     options = parser.parse_args()
 
+    # Get all the changes on the main branch.
     all_changes = get_commits("main", scope=options.scope)
 
+    # Group the changes by release.
     releases = []
     releases.append(Release(None, []))
     for change in all_changes:
@@ -237,70 +297,12 @@ def main():
     if len(releases) > 1 and releases[0].is_empty:
         releases.pop(0)
 
-
-    # Run the requested command.
-    if options.command == "current-version":
-        print(releases[0].version)
-    elif options.command =="current-changes":
-        print(format_changes(releases[0].changes), end="")
-    elif options.command == "released-version":
-        active_release = next(release for release in releases if release.has_tag)
-        print(active_release.version)
-    elif options.command == "all-changes":
-        print(format_releases(releases), end="")
-    elif options.command == "tag":
-        # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
-        tag = str(version)
-        if options.scope is not None:
-            tag = f"{options.scope}_{tag}"
-        run(["git", "tag", str(version)])
-
-    # print(format_releases(releases))
-
-    exit()
-
-    # Get all the commits up to and including the most recent commit tagged with a version.
-    changes = get_commits("main", scope=options.scope, stop=lambda x: x.version is not None)
-    changes.reverse()
-
-    # Determine the starting version by checking to see if the first commit has a version tag.
-    # If it does, update the version and discard the first tag as we assume any change it describes is already captured
-    # in that version.
-    initial_version = Version()
-    first_commit = changes[0]
-    if first_commit.version is not None:
-        initial_version = first_commit.version
-        changes = changes[1:]
-    version = copy.deepcopy(initial_version)
-
-    logging.debug(f"{version} (current release)")
-
-    # Walk the commits to determine the next version.
-    for commit in changes:
-        if commit.message.type in OPERATIONS:
-            OPERATIONS[commit.message.type](commit, version)
-        else:
-            logging.warning("Ignoring unknown commit: '%s'", commit.message.description)
-
-    # Output the relevant information.
-    if options.command == "current-version":
-        print(version)
-    elif options.command =="current-changes":
-        markdown = format_changes(changes)
-        print(markdown)
-    elif options.command == "tagged-version":
-        print(initial_version)
-    elif options.command == "tag":
-        # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
-        tag = str(version)
-        if options.scope is not None:
-            tag = f"{options.scope}_{tag}"
-        run(["git", "tag", str(version)])
+    # Run the command.
+    if 'fn' not in options:
+        logging.error("No command specified.")
+        exit(1)
+    options.fn(options, releases)
 
 
 if __name__ == "__main__":
     main()
-
-
-
-# TODO: Both current changes and current version should be able to show the 'previous' if current matches previous.
