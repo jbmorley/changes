@@ -257,7 +257,7 @@ def command_release(parser):
         run(["git", "tag", tag])
         # TODO: Perform cleanup of the tag if the release fails.
         if options.push:
-            run(["git", "push", "orign", tag])
+            run(["git", "push", "origin", tag])
     return perform
 
 
