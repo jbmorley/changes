@@ -214,7 +214,7 @@ class Release(object):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["current-version", "current-changes", "tagged-version", "tag"])
+    parser.add_argument("command", choices=["current-version", "current-changes", "released-version", "tag"])
     parser.add_argument("--scope", help="scope to be used in tags and commit messages")
     options = parser.parse_args()
 
@@ -243,8 +243,9 @@ def main():
         print(releases[0].version)
     elif options.command =="current-changes":
         print(format_changes(releases[0].changes), end="")
-    elif options.command == "tagged-version":
-        print(initial_version)
+    elif options.command == "released-version":
+        active_release = next(release for release in releases if release.has_tag)
+        print(active_release.version)
     elif options.command == "tag":
         # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
         tag = str(version)
