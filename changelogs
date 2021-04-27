@@ -67,8 +67,11 @@ def tags(ref):
     return result
 
 
-def parse_version(tag):
-    sv_parser = re.compile(r"^(\d+).(\d+).(\d+)$")
+def parse_version(tag, namespace=None):
+    prefix = ""
+    if namespace is not None:
+        prefix = namespace + "_"
+    sv_parser = re.compile(r"^" + prefix + r"(\d+).(\d+).(\d+)$")
     match = sv_parser.match(tag)
     if match:
         return Version(major=int(match.group(1)),
@@ -93,25 +96,29 @@ def latest_version(ref):
 
 class Commit(object):
 
-    def __init__(self, sha, message, tags):
+    def __init__(self, sha, message, tags, version):
         self.sha = sha
         self.message = message
         self.tags = tags
-        self.version = None
-        for tag in tags:
-            try:
-                self.version = parse_version(tag)
-                break
-            except ValueError:
-                pass
+        self.version = version
 
 
-def get_commits(ref, stop=lambda x: False):
+def version_from_tags(tags, namespace=None):
+    for tag in tags:
+        try:
+            return parse_version(tag, namespace)
+        except ValueError:
+            pass
+    return None
+
+
+
+def get_commits(ref, namespace=None, stop=lambda x: False):
     results = []
     commits = run(["git", "log", "--pretty=format:%H:%s", ref])
     for c in commits:
         sha, message = c.split(":", 1)
-        commit = Commit(sha, message, get_tags(sha))
+        commit = Commit(sha, message, get_tags(sha), version_from_tags(get_tags(sha), namespace))
         results.append(commit)
         if stop(commit):
             return results
@@ -126,24 +133,48 @@ class Type(enum.Enum):
 
 
 OPERATIONS = {
-    Type.BREAKING_CHANGE.value: lambda x: x.bump_major(),
-    Type.FEATURE.value: lambda x: x.bump_minor(),
-    Type.FIX.value: lambda x: x.bump_patch(),
-    Type.UNKNOWN.value: lambda x: None,
+    Type.BREAKING_CHANGE: lambda x: x.bump_major(),
+    Type.FEATURE: lambda x: x.bump_minor(),
+    Type.FIX: lambda x: x.bump_patch(),
+    Type.UNKNOWN: lambda x: None,
 }
+
+
+class Message(object):
+
+    def __init__(self, type, scope, description):
+        self.type = type
+        self.scope = scope
+        self.description = description
+
+
+def parse_message(message):
+    cc_parser = re.compile(r"^(.+?)(\((.+?)\))?:(.+)$")
+    match = cc_parser.match(message)
+    if match is not None:
+        (cc_type, cc_scope, cc_description) = (match.group(1), match.group(3), match.group(4))
+        try:
+            return Message(type=Type(cc_type),
+                           scope=cc_scope,
+                           description=cc_description.strip())
+        except ValueError:
+            pass
+    return Message(type=Type.UNKNOWN,
+                   scope=None,
+                   description=message.strip())
 
 
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("changelog", help="changelog to update")
-    parser.add_argument("command", choices=["current-version", "current-changes", "last-tagged-version", "tag-release"])
+    parser.add_argument("command", choices=["current-version", "current-changes", "tagged-version", "tag-release"])
     parser.add_argument("--namespace", help="namespace to be used in tags and commit messages")
     options = parser.parse_args()
 
     cc_parser = re.compile(r"^(.+?):.+")
 
     # Get all the commits up to and including the most recent commit tagged with a version.
-    changes = get_commits("main", stop=lambda x: x.version is not None)
+    changes = get_commits("main", namespace=options.namespace, stop=lambda x: x.version is not None)
     changes.reverse()
 
     # Determine the starting version by checking to see if the first commit has a version tag.
@@ -160,13 +191,11 @@ def main():
 
     # Walk the commits to determine the next version.
     for commit in changes:
-        match = cc_parser.match(commit.message)
-        if match is not None:
-            commit_type = match.group(1)
-            operation = OPERATIONS[commit_type]
-            operation(version)
+        message = parse_message(commit.message)
+        if message.type in OPERATIONS:
+            OPERATIONS[message.type](version)
         else:
-            logging.warning("Ignoring unknown commit: '%s'", commit.message)
+            logging.warning("Ignoring unknown commit: '%s'", message.description)
 
     # Output the relevant information.
     if options.command == "current-version":
@@ -174,10 +203,13 @@ def main():
     elif options.command =="current-changes":
         for commit in changes:
             print(commit.message)
-    elif options.command == "last-tagged-version":
+    elif options.command == "tagged-version":
         print(initial_version)
     elif options.command == "tag-release":
         # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
+        tag = str(version)
+        if options.namespace is not None:
+            tag = f"{options.namespace}_{tag}"
         run(["git", "tag", str(version)])
 
 
