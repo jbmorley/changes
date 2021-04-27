@@ -251,7 +251,9 @@ def command_release(parser):
         tag = str(version)
         if options.scope is not None:
             tag = f"{options.scope}_{tag}"
-        run(["git", "tag", str(version)])
+        run(["git", "tag", tag])
+        if options.push:
+            run(["git", "push", "orign", tag])
     return perform
 
 
