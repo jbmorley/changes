@@ -38,13 +38,17 @@ def commits(ref):
     return run(["git", "log", "--pretty=format:%H", ref])
 
 
+def get_tags(sha):
+    try:
+        return run(["git", "describe", "--tags", "--exact-match", sha])
+    except subprocess.CalledProcessError:
+        return []
+
+
 def tags(ref):
     result = []
     for commit in commits(ref):
-        try:
-            result.append(run(["git", "describe", "--tags", "--exact-match", commit]))
-        except subprocess.CalledProcessError:
-            pass
+        result.append(get_tags(commit))
     return result
 
 
@@ -69,16 +73,48 @@ OPERATIONS = {
 }
 
 
+class Commit(object):
+
+    def __init__(self, sha, message, tags):
+        self.sha = sha
+        self.message = message
+        self.tags = tags
+
+
+def get_commit(sha):
+    details = run(["git", "log", "--pretty=format:%H:%s", "--max-count", "1", sha])[0]
+    sha, message = details.split(":", 1)
+    return Commit(sha, message, get_tags(sha))
+
+
+def get_commits(ref):
+    results = []
+    commits = run(["git", "log", "--pretty=format:%H:%s", ref])
+    for commit in commits:
+        sha, message = commit.split(":", 1)
+        results.append(Commit(sha, message, get_tags(sha)))
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--namespace", help="namespace to be used in tags and commit messages")
+    parser.add_argument("--skip-tags", action="store_true", default=False, help="ignore existing tags")
     options = parser.parse_args()
 
     cc_parser = re.compile(r"^(.+?):.+")
 
+    for commit in get_commits("main"):
+        print(commit)
+        print(commit.tags)
+    exit()
+
 
 
     # TODO: Support namespaces.
-    version = latest_version("main")
+    version = Version()
+    if not options.skip_tags:
+        version = latest_version("main")
     print(f"Starting version = {version}")
 
     logs = reversed(subprocess.check_output(["git", "log", "--pretty=format:%s"]).decode("utf-8").split("\n"))
