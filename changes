@@ -237,7 +237,23 @@ def main():
     if len(releases) > 1 and releases[0].is_empty:
         releases.pop(0)
 
-    print(format_releases(releases))
+
+    # Run the requested command.
+    if options.command == "current-version":
+        print(releases[0].version)
+    elif options.command =="current-changes":
+        markdown = format_changes(changes)
+        print(markdown)
+    elif options.command == "tagged-version":
+        print(initial_version)
+    elif options.command == "tag":
+        # TODO: This should allow the --release-candidate flag and auto-increment release candidates.
+        tag = str(version)
+        if options.scope is not None:
+            tag = f"{options.scope}_{tag}"
+        run(["git", "tag", str(version)])
+
+    # print(format_releases(releases))
 
     exit()
 
