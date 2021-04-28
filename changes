@@ -262,7 +262,7 @@ def command_release(parser):
 
         title = str(version)
         if options.scope is not None:
-            title = f"{scope} {title}"
+            title = f"{options.scope} {title}"
 
         if options.push:
             logging.info("Pushing tag...")
