@@ -8,4 +8,4 @@ Many of the SemVer tools out there force very specific workflows that I found ha
 
 ## Contributing
 
-I wrote Changes to satisfy my own minimal needs so there's a good chance it doesn't do everything you want (e.g., it doesn't support all the Conventional Commits) commit types. You're more than welcome to raise a pull request, or issue, if there's some functionality you like to see.
+I wrote Changes to satisfy my own minimal needs so there's a good chance it doesn't do everything you want (e.g., it doesn't support all the Conventional Commits commit types). You're more than welcome to raise a pull request, or issue, if there's some functionality you like to see.
