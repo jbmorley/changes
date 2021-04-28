@@ -265,9 +265,9 @@ def command_all_changes(parser):
 
 
 COMMANDS = {
-    "current-version": (command_current_version, "a"),
-    "current-changes": (command_current_changes, "a"),
-    "released-version": (command_released_version, "a"),
+    "current-version": (command_current_version, "current version accounting for the unreleased changes, or released vesrion if there are no unreleased changes"),
+    "current-changes": (command_current_changes, "formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes"),
+    "released-version": (command_released_version, "released version number as given by the most recent git version tag"),
     "release": (command_release, "a"),
     "all-changes": (command_all_changes, "a"),
 }
