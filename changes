@@ -50,8 +50,9 @@ class Version(object):
 
 
 def run(command):
-    result = subprocess.check_output(command, stderr=subprocess.PIPE)
-    lines = result.decode("utf-8").strip().split("\n")
+    result = subprocess.run(command, capture_output=True)
+    result.check_returncode()
+    lines = result.stdout.decode("utf-8").strip().split("\n")
     return lines
 
 
@@ -104,7 +105,11 @@ def version_from_tags(tags, scope=None):
 def get_commits(scope=None, stop=lambda x: False):
     results = []
     command = ["git", "log", "--pretty=format:%H:%s"]
-    commits = run(command)
+    try:
+        commits = run(command)
+    except subprocess.CalledProcessError as e:
+        logging.error(e.stderr.decode("utf-8"))
+        exit(1)
     for c in commits:
         sha, message = c.split(":", 1)
         commit = Commit(sha, parse_message(message), get_tags(sha), version_from_tags(get_tags(sha), scope))
