@@ -55,10 +55,6 @@ def run(command):
     return lines
 
 
-def commits(ref):
-    return run(["git", "log", "--pretty=format:%H", ref])
-
-
 def get_tags(sha):
     try:
         return run(["git", "describe", "--tags", "--exact-match", sha])
@@ -105,9 +101,10 @@ def version_from_tags(tags, scope=None):
     return None
 
 
-def get_commits(ref, scope=None, stop=lambda x: False):
+def get_commits(scope=None, stop=lambda x: False):
     results = []
-    commits = run(["git", "log", "--pretty=format:%H:%s", ref])
+    command = ["git", "log", "--pretty=format:%H:%s"]
+    commits = run(command)
     for c in commits:
         sha, message = c.split(":", 1)
         commit = Commit(sha, parse_message(message), get_tags(sha), version_from_tags(get_tags(sha), scope))
@@ -287,7 +284,7 @@ def main():
     options = parser.parse_args()
 
     # Get all the changes on the main branch.
-    all_changes = get_commits("main", scope=options.scope)
+    all_changes = get_commits(scope=options.scope)
 
     # Group the changes by release.
     releases = []
