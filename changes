@@ -5,6 +5,7 @@ import collections
 import copy
 import enum
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -253,13 +254,33 @@ def command_release(parser):
             logging.error("No versions to release.")
             exit(1)
         version = releases[0].version
+        logging.info("Releasing %s...", version)
         tag = str(version)
         if options.scope is not None:
             tag = f"{options.scope}_{tag}"
         run(["git", "tag", tag])
-        # TODO: Perform cleanup of the tag if the release fails.
+
+        title = str(version)
+        if options.scope is not None:
+            title = f"{scope} {title}"
+
         if options.push:
+            logging.info("Pushing tag...")
             run(["git", "push", "origin", tag])
+
+        if options.command is not None:
+            logging.info("Running command...")
+            env = copy.deepcopy(os.environ)
+            env['CHANGES_TITLE'] = title
+            env['CHANGES_VERSION'] = str(version)
+            env['CHANGES_TAG'] = tag
+            env['CHANGES_NOTES'] = format_changes(releases[0].changes)  # TODO: It might be nice to wrap this up more cleanly.
+            result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
+            result.check_returncode()
+            logging.info(result.stdout.decode("utf-8").strip())
+
+        logging.info("Done.")
+
     return perform
 
 
