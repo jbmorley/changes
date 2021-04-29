@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 
 verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
@@ -50,7 +51,10 @@ class Version(object):
         return f"{self.major}.{self.minor}.{self.patch}"
 
 
-def run(command):
+def run(command, dry_run=False):
+    if dry_run:
+        logging.info(command)
+        return []
     result = subprocess.run(command, capture_output=True)
     result.check_returncode()
     lines = result.stdout.decode("utf-8").strip().split("\n")
@@ -246,6 +250,7 @@ def command_release(parser):
     parser.add_argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release")
     parser.add_argument("--command", help="command to run to perform the release")
     parser.add_argument("--push", action="store_true", default=False, help="push the newly created tag")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed")
     def perform(options, releases):
         if releases[0].has_tag:
             # There aren't any unreleased versions.
@@ -258,31 +263,50 @@ def command_release(parser):
         tag = str(version)
         if options.scope is not None:
             tag = f"{options.scope}_{tag}"
-        run(["git", "tag", tag])
+        logging.info("Creating tag '%s'...", tag)
+        run(["git", "tag", tag], dry_run=options.dry_run)
 
         title = str(version)
         if options.scope is not None:
             title = f"{options.scope} {title}"
 
         if options.push:
-            logging.info("Pushing tag...")
-            run(["git", "push", "origin", tag])
+            logging.info("Pushing tag '%s'...", tag)
+            run(["git", "push", "origin", tag], dry_run=options.dry_run)
 
         if options.command is not None:
             logging.info("Running command...")
-            env = copy.deepcopy(os.environ)
-            env['CHANGES_TITLE'] = title
-            env['CHANGES_VERSION'] = str(version)
-            env['CHANGES_TAG'] = tag
-            env['CHANGES_NOTES'] = format_changes(releases[0].changes)  # TODO: It might be nice to wrap this up more cleanly.
-            result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
-            try:
-                result.check_returncode()
-                logging.info(result.stdout.decode("utf-8").strip())
-            except subprocess.CalledProcessError as e:
-                logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
-                run(["git", "tag", "-d", tag])
-                run(["git", "push", "origin", f":{tag}"])
+            success = True
+
+            notes = format_changes(releases[0].changes)
+
+            # Create a temporary directory containing the notes.
+            with tempfile.NamedTemporaryFile() as notes_file:
+                notes_file.write(notes.encode("utf-8"))
+
+                # Set up the environment.
+                env = copy.deepcopy(os.environ)
+                env['CHANGES_TITLE'] = title
+                env['CHANGES_VERSION'] = str(version)
+                env['CHANGES_TAG'] = tag
+                env['CHANGES_NOTES'] = notes
+                env['CHANGES_NOTES_FILE'] = notes_file.name
+
+                # Run the command.
+                if options.dry_run:
+                    logging.info(options.command)
+                else:
+                    result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
+                    try:
+                        result.check_returncode()
+                        logging.info(result.stdout.decode("utf-8").strip())
+                    except subprocess.CalledProcessError as e:
+                        logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
+                        run(["git", "tag", "-d", tag])
+                        run(["git", "push", "origin", f":{tag}"])
+                        success = False
+
+            if not success:
                 exit(1)
 
         logging.info("Done.")
