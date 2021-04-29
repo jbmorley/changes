@@ -276,8 +276,14 @@ def command_release(parser):
             env['CHANGES_TAG'] = tag
             env['CHANGES_NOTES'] = format_changes(releases[0].changes)  # TODO: It might be nice to wrap this up more cleanly.
             result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
-            result.check_returncode()
-            logging.info(result.stdout.decode("utf-8").strip())
+            try:
+                result.check_returncode()
+                logging.info(result.stdout.decode("utf-8").strip())
+            except subprocess.CalledProcessError as e:
+                logging.error("Release command failed with error '%s'; reverting release.", e.stderr)
+                run(["git", "tag", "-d", tag])
+                run(["git", "push", "origin", f":{tag}"])
+                exit(1)
 
         logging.info("Done.")
 
