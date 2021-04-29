@@ -280,7 +280,7 @@ def command_release(parser):
                 result.check_returncode()
                 logging.info(result.stdout.decode("utf-8").strip())
             except subprocess.CalledProcessError as e:
-                logging.error("Release command failed with error '%s'; reverting release.", e.stderr)
+                logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
                 run(["git", "tag", "-d", tag])
                 run(["git", "push", "origin", f":{tag}"])
                 exit(1)
