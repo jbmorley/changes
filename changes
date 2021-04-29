@@ -282,7 +282,8 @@ def command_release(parser):
 
             # Create a temporary directory containing the notes.
             with tempfile.NamedTemporaryFile() as notes_file:
-                notes_file.write(notes.encode("utf-8"))
+                with open(notes_file.name, "w") as fh:
+                    fh.write(notes)
 
                 # Set up the environment.
                 env = copy.deepcopy(os.environ)
