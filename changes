@@ -91,10 +91,11 @@ class Commit(object):
 
 
 class Type(enum.Enum):
+    BREAKING_CHANGE = "BREAKING CHANGE"
+    CI = "ci"
+    DOCUMENTATION = "docs"
     FEATURE = "feat"
     FIX = "fix"
-    BREAKING_CHANGE = "BREAKING CHANGE"
-    DOCUMENTATION = "docs"
     UNKNOWN = "UNKNOWN"
 
 
@@ -126,10 +127,11 @@ def get_commits(scope=None, stop=lambda x: False):
 
 OPERATIONS = {
     Type.BREAKING_CHANGE: lambda commit, version: version.bump_major(),
+    Type.CI: None,
+    Type.DOCUMENTATION: None,
     Type.FEATURE: lambda commit, version: version.bump_minor(),
     Type.FIX: lambda commit, version: version.bump_patch(),
-    Type.DOCUMENTATION: lambda commit, version: None,
-    Type.UNKNOWN: lambda commit, version: logging.warning("Ignoring '%s'...", commit.message.description),
+    Type.UNKNOWN: None,
 }
 
 
@@ -159,9 +161,10 @@ def parse_message(message):
 
 TYPE_TO_SECTION = {
     Type.BREAKING_CHANGE: "Changes",
+    Type.CI: "Ignore",
+    Type.DOCUMENTATION: "Ignore",
     Type.FEATURE: "Changes",
     Type.FIX: "Fixes",
-    Type.DOCUMENTATION: "Ignore",
     Type.UNKNOWN: "Ignore",
 }
 
@@ -217,14 +220,17 @@ class Release(object):
         """Recomputes the current version based on the previous version by applying the changes in order."""
         self.version = copy.deepcopy(previous_version)
         for commit in reversed(self.changes):
-            if commit.message.type in OPERATIONS:
+            if commit.message.type in OPERATIONS and OPERATIONS[commit.message.type] is not None:
                 OPERATIONS[commit.message.type](commit, self.version)
             else:
-                logging.warning("Ignoring unknown commit: '%s'", commit.message.description)
+                logging.warning("Ignoring commit: '%s'", commit.message.description)
 
     @property
     def is_empty(self):
-        return len(self.changes) < 1
+        for change in self.changes:
+            if OPERATIONS[change.message.type] is not None:
+                return False
+        return True
 
 
 def command_current_version(parser):
