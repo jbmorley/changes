@@ -22,9 +22,10 @@
 
 import os
 import unittest
-import sys
 
 import common
+
+from common import Commit, EmptyCommit, Repository, Tag
 
 common.configure_path()
 
@@ -33,6 +34,43 @@ class CLITestCase(unittest.TestCase):
 
     def test_true(self):
         self.assertTrue(True)
+
+    def test_create_repository(self):
+        with Repository() as repository:
+            self.assertTrue(os.path.isdir(repository.path))
+            self.assertTrue(os.path.isdir(os.path.join(repository.path, ".git")))
+
+    def test_add_commit(self):
+        with Repository() as repository:
+            repository.commit("commit one", allow_empty=True)
+            self.assertEqual(repository.rev_list("HEAD", count=True), 1)
+            repository.commit("commit two", allow_empty=True)
+            self.assertEqual(repository.rev_list("HEAD", count=True), 2)
+
+    def test_batch_commit(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("commit one"),
+                EmptyCommit("commit two"),
+            ])
+            self.assertEqual(repository.rev_list("HEAD", count=True), 2)
+
+    def test_tag(self):
+        with Repository() as repository:
+            repository.commit("commit", allow_empty=True)
+            self.assertEqual(repository.rev_list("HEAD", count=True), 1)
+            self.assertEqual(repository.tag(), [])
+            repository.tag("1.0.0")
+            self.assertEqual(repository.tag(), ["1.0.0"])
+
+    def test_operations(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("0.1.0"),
+            ])
+            self.assertEqual(repository.rev_list("HEAD", count=True), 1)
+            self.assertEqual(repository.tag(), ["0.1.0"])
 
 
 if __name__ == '__main__':
