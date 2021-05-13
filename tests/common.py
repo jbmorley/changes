@@ -118,6 +118,13 @@ class Repository(object):
         lines = [line for line in lines if line]
         return lines
 
+    def config(self, name, value):
+        return self.git(["config", name, value])
+
+    def set_user(self, name, email):
+        self.config("user.name", name)
+        self.config("user.email", email)
+
     def perform(self, operations):
         for operation in operations:
             operation.perform(self)
