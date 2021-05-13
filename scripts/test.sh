@@ -20,4 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-changes release --push --command 'gh release create $CHANGES_TAG --title "$CHANGES_TITLE" --notes "$CHANGES_NOTES"' "$@"
+SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
+TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
+
+pushd "$TESTS_DIRECTORY"
+python3 -m unittest discover
+popd
