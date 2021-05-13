@@ -79,6 +79,7 @@ class Repository(object):
         self.directory = tempfile.TemporaryDirectory()
         self.directory.__enter__()
         self.init()
+        self.set_user("Someone", "someone@example.com")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -117,6 +118,13 @@ class Repository(object):
         lines = self.git(arguments).strip().split("\n")
         lines = [line for line in lines if line]
         return lines
+
+    def config(self, name, value):
+        return self.git(["config", name, value])
+
+    def set_user(self, name, email):
+        self.config("user.name", name)
+        self.config("user.email", email)
 
     def perform(self, operations):
         for operation in operations:
