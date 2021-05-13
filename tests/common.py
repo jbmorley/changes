@@ -79,6 +79,7 @@ class Repository(object):
         self.directory = tempfile.TemporaryDirectory()
         self.directory.__enter__()
         self.init()
+        self.set_user("Someone", "someone@example.com")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

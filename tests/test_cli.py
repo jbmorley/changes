@@ -37,13 +37,11 @@ class CLITestCase(unittest.TestCase):
 
     def test_create_repository(self):
         with Repository() as repository:
-            repository.set_user("Someone", "someone@example.com")
             self.assertTrue(os.path.isdir(repository.path))
             self.assertTrue(os.path.isdir(os.path.join(repository.path, ".git")))
 
     def test_add_commit(self):
         with Repository() as repository:
-            repository.set_user("Someone", "someone@example.com")
             repository.commit("commit one", allow_empty=True)
             self.assertEqual(repository.rev_list("HEAD", count=True), 1)
             repository.commit("commit two", allow_empty=True)
@@ -51,7 +49,6 @@ class CLITestCase(unittest.TestCase):
 
     def test_batch_commit(self):
         with Repository() as repository:
-            repository.set_user("Someone", "someone@example.com")
             repository.perform([
                 EmptyCommit("commit one"),
                 EmptyCommit("commit two"),
@@ -60,7 +57,6 @@ class CLITestCase(unittest.TestCase):
 
     def test_tag(self):
         with Repository() as repository:
-            repository.set_user("Someone", "someone@example.com")
             repository.commit("commit", allow_empty=True)
             self.assertEqual(repository.rev_list("HEAD", count=True), 1)
             self.assertEqual(repository.tag(), [])
@@ -69,7 +65,6 @@ class CLITestCase(unittest.TestCase):
 
     def test_operations(self):
         with Repository() as repository:
-            repository.set_user("Someone", "someone@example.com")
             repository.perform([
                 EmptyCommit("initial commit"),
                 Tag("0.1.0"),
