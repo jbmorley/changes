@@ -1,5 +1,3 @@
-#!/bin/bash
-#
 # Copyright (c) 2021 InSeven Limited
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,4 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-changes release --push --command 'gh release create $CHANGES_TAG --title "$CHANGES_TITLE" --notes "$CHANGES_NOTES"' "$@"
+import os
+import unittest
+import sys
+
+TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
+
+def configure_path():
+    sys.path.append(ROOT_DIRECTORY)

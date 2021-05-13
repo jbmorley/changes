@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python3
 #
 # Copyright (c) 2021 InSeven Limited
 #
@@ -20,4 +20,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-changes release --push --command 'gh release create $CHANGES_TAG --title "$CHANGES_TITLE" --notes "$CHANGES_NOTES"' "$@"
+import os
+import unittest
+import sys
+
+import common
+
+common.configure_path()
+
+
+class CLITestCase(unittest.TestCase):
+
+    def test_true(self):
+        self.assertTrue(True)
+
+
+if __name__ == '__main__':
+    unittest.main()
