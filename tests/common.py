@@ -85,9 +85,12 @@ class Repository(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.directory.__exit__(exc_type, exc_value, traceback)
 
-    def run(self, command):
+    def run(self, command, env=None):
         with Chdir(self.path):
-            return subprocess.check_output(command).decode("utf-8")
+            kwargs = {}
+            if env is not None:
+                kwargs["env"] = env
+            return subprocess.check_output(command, **kwargs).decode("utf-8")
 
     def git(self, arguments):
         return self.run(["git"] + arguments)
@@ -129,6 +132,14 @@ class Repository(object):
     def perform(self, operations):
         for operation in operations:
             operation.perform(self)
+
+    def changes(self, arguments=[]):
+        environment = dict(os.environ)
+        environment["PATH"] = environment["PATH"] + ":" + ROOT_DIRECTORY
+        return self.run(["changes"] + arguments, env=environment)
+
+    def changes_current_version(self):
+        return self.changes(["current-version"]).strip()
 
     @property
     def path(self):

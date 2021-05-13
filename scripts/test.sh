@@ -30,5 +30,5 @@ ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
 TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
 
 pushd "$TESTS_DIRECTORY"
-python3 -m unittest discover
+python3 -m unittest discover --verbose
 popd

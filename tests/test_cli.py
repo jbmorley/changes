@@ -72,6 +72,37 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.rev_list("HEAD", count=True), 1)
             self.assertEqual(repository.tag(), ["0.1.0"])
 
+    def test_current_version_raw_output(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+            ])
+            self.assertEqual(repository.changes(["current-version"]), "0.1.0\n")
+
+    def test_current_version(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("inital commit"),
+                Tag("0.2.0")
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.2.0")
+            repository.perform([
+                EmptyCommit("ignored commit"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.2.0")
+            repository.perform([
+                EmptyCommit("fix: this fix should update the patch version"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.2.1")
+            repository.perform([
+                EmptyCommit("feat: this feature should update the minor verison"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.3.0")
+            repository.perform([
+                EmptyCommit("BREAKING CHANGE: this break should update the major verison"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "1.0.0")
+
 
 if __name__ == '__main__':
     unittest.main()
