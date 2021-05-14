@@ -30,4 +30,4 @@ TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
 
 pushd "$TESTS_DIRECTORY" > /dev/null
 python3 -m unittest discover --verbose
-popd
+popd > /dev/null
