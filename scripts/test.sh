@@ -22,13 +22,12 @@
 
 set -e
 set -o pipefail
-set -x
 set -u
 
 SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
 TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
 
-pushd "$TESTS_DIRECTORY"
+pushd "$TESTS_DIRECTORY" > /dev/null
 python3 -m unittest discover --verbose
 popd

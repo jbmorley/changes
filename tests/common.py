@@ -90,7 +90,10 @@ class Repository(object):
             kwargs = {}
             if env is not None:
                 kwargs["env"] = env
-            return subprocess.check_output(command, **kwargs).decode("utf-8")
+            result = subprocess.run(command, capture_output=True, **kwargs)
+            result.check_returncode()
+            return result.stdout.decode("utf-8")
+
 
     def git(self, arguments):
         return self.run(["git"] + arguments)
