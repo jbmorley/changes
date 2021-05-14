@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import os
+import subprocess
 import unittest
 
 import common
@@ -122,6 +123,36 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not update the minor version"),
             ])
             self.assertEqual(repository.changes_current_version(), "1.0.0")
+
+    def test_released_version_raw_output(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.6.12"),
+            ])
+            self.assertEqual(repository.changes(["released-version"]), "1.6.12\n")
+
+    def test_released_version_no_tag_fails(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+            ])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes(["released-version"])
+
+    def test_released_version(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initia commit"),
+                Tag("2.1.3"),
+            ])
+            self.assertEqual(repository.changes_released_version(), "2.1.3")
+            repository.perform([
+                EmptyCommit("fix: this fix should not affect the released version"),
+                EmptyCommit("feat: this feat should not affect the released version"),
+                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not affect the released version"),
+            ])
+            self.assertEqual(repository.changes_released_version(), "2.1.3")
 
 
 if __name__ == '__main__':
