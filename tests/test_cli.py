@@ -32,9 +32,6 @@ common.configure_path()
 
 class CLITestCase(unittest.TestCase):
 
-    def test_true(self):
-        self.assertTrue(True)
-
     def test_create_repository(self):
         with Repository() as repository:
             self.assertTrue(os.path.isdir(repository.path))
@@ -100,6 +97,29 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes_current_version(), "0.3.0")
             repository.perform([
                 EmptyCommit("BREAKING CHANGE: this break should update the major verison"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "1.0.0")
+
+    def test_multiple_changes_yield_single_increment(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("inital commit"),
+                Tag("0.1.0")
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.1.0")
+            repository.perform([
+                EmptyCommit("fix: this fix should update the patch version"),
+                EmptyCommit("fix: this fix should not update the patch version"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.1.1")
+            repository.perform([
+                EmptyCommit("feat: this feat should update the minor version"),
+                EmptyCommit("feat: this feat should not update the minor version"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.2.0")
+            repository.perform([
+                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should update the minor version"),
+                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not update the minor version"),
             ])
             self.assertEqual(repository.changes_current_version(), "1.0.0")
 
