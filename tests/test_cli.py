@@ -32,9 +32,6 @@ common.configure_path()
 
 class CLITestCase(unittest.TestCase):
 
-    def test_true(self):
-        self.assertTrue(True)
-
     def test_create_repository(self):
         with Repository() as repository:
             self.assertTrue(os.path.isdir(repository.path))
