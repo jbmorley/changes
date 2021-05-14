@@ -144,6 +144,9 @@ class Repository(object):
     def changes_current_version(self):
         return self.changes(["current-version"]).strip()
 
+    def changes_released_version(self):
+        return self.changes(["released-version"]).strip()
+
     @property
     def path(self):
         return self.directory.name
