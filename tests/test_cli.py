@@ -128,6 +128,23 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_current_version(), "1.0.0")
 
+    def test_exclamation_mark_indicates_breaking_change(self):
+        with Repository()as repository:
+            repository.perform([
+                EmptyCommit("feat!: Breaking feat should increment major version"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "1.0.0")
+            repository.changes_release()
+            repository.perform([
+                EmptyCommit("fix!: Breaking fix should increment major version"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "2.0.0")
+            repository.perform([
+                EmptyCommit("wibble!: Unknown breaking type should do nothing"),
+                EmptyCommit("ci!: Unknown ignored type should do nothing"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "2.0.0")
+
     def test_released_version_raw_output(self):
         with Repository() as repository:
             repository.perform([
