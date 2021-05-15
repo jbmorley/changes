@@ -197,6 +197,28 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_released_version(), "2.1.3")
 
+    def test_release_fails_empty_repository(self):
+        with Repository() as repository:
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes_release()
+
+    def test_release_fails_without_changes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit with no changes"),
+                Tag("0.1.1")
+            ])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes_release()
+
+    def test_release_fails_without_changes_or_previous_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit with no changes"),
+            ])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes_release()
+
     def test_current_notes(self):
         with Repository() as repository:
             repository.perform([

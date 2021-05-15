@@ -174,8 +174,11 @@ class Repository(object):
     def current_notes(self):
         return self.changes(["current-notes"])
 
-    def changes_release(self):
-        return self.changes(["release"])
+    def changes_release(self, scope=None):
+        arguments = ["release"]
+        if scope is not None:
+            arguments.extend(["--scope", scope])
+        return self.changes(arguments)
 
     def changes_all_changes(self, skip_unreleased=False):
         arguments = ["all-changes"]
