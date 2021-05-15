@@ -101,6 +101,10 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_current_version(), "1.0.0")
 
+    def test_current_version_no_changes(self):
+        with Repository() as repository:
+            self.assertEqual(repository.changes_current_version(), "0.0.0")
+
     def test_multiple_changes_yield_single_increment(self):
         with Repository() as repository:
             repository.perform([
