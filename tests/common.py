@@ -97,7 +97,11 @@ class Repository(object):
             if env is not None:
                 kwargs["env"] = env
             result = subprocess.run(command, capture_output=True, **kwargs)
-            result.check_returncode()
+            try:
+                result.check_returncode()
+            except subprocess.CalledProcessError as e:
+                print(e.stderr)
+                raise
             return result.stdout.decode("utf-8")
 
 
@@ -147,8 +151,11 @@ class Repository(object):
         environment["PATH"] = environment["PATH"] + ":" + ROOT_DIRECTORY
         return self.run(["changes"] + arguments, env=environment)
 
-    def changes_current_version(self):
-        return self.changes(["current-version"]).strip()
+    def changes_current_version(self, scope=None):
+        arguments = ["current-version"]
+        if scope is not None:
+            arguments.extend(["--scope", scope])
+        return self.changes(arguments).strip()
 
     def changes_released_version(self):
         return self.changes(["released-version"]).strip()

@@ -105,7 +105,7 @@ class CLITestCase(unittest.TestCase):
         with Repository() as repository:
             self.assertEqual(repository.changes_current_version(), "0.0.0")
 
-    def test_multiple_changes_yield_single_increment(self):
+    def test_current_version_multiple_changes_yield_single_increment(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("inital commit"),
@@ -127,6 +127,28 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not update the minor version"),
             ])
             self.assertEqual(repository.changes_current_version(), "1.0.0")
+
+    def test_current_version_with_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("a_1.0.0"),
+            ])
+            self.assertEqual(repository.changes_current_version(), "0.0.0")
+            self.assertEqual(repository.changes_current_version(scope="a"), "1.0.0")
+            self.assertEqual(repository.changes_current_version(scope="b"), "0.0.0")
+
+
+    def test_current_version_with_legacy_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("a_1.0.0"),
+            ])
+            self.assertEqual(repository.changes(["current-version"]), "0.0.0\n")
+            self.assertEqual(repository.changes(["--scope", "a", "current-version"]), "1.0.0\n")
+            self.assertEqual(repository.changes(["--scope", "b", "current-version"]), "0.0.0\n")
+
 
     def test_exclamation_mark_indicates_breaking_change(self):
         with Repository()as repository:
