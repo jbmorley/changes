@@ -225,10 +225,7 @@ class CLITestCase(unittest.TestCase):
 - More Shiny
 """)
 
-# TODO: Support --skip-unreleased
-#       --only-released
-
-    def test_release_notes(self):
+    def test_all_changes(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
