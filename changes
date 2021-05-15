@@ -177,6 +177,12 @@ class History(object):
 
         self.releases = releases
 
+    def format_changes(self, skip_unreleased=False):
+        releases = list(self.releases)
+        if skip_unreleased and not releases[0].has_tag:
+            releases.pop(0)
+        return format_releases(releases)
+
 
 def run(command, dry_run=False):
     if dry_run:
@@ -402,16 +408,21 @@ def command_release(options):
     logging.info("Done.")
 
 
-@cli.command("all-changes", help="a", arguments=[
+@cli.command("all-changes", help="output changes for all versions", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions")
 ])
 def command_all_changes(options):
     history = History(scope=resolve_scope(options))
-    releases = history.releases
-    if options.skip_unreleased and not releases[0].has_tag:
-        releases.pop(0)
-    print(format_releases(releases), end="")
+    print(history.format_changes(skip_unreleased=options.skip_unreleased), end="")
+
+
+@cli.command("release-notes", help="output changes for all released versions", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+])
+def command_release_notes(options):
+    history = History(scope=resolve_scope(options))
+    print(history.format_changes(skip_unreleased=True), end="")
 
 
 def main():
