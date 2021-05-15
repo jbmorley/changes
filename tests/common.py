@@ -111,7 +111,7 @@ class Repository(object):
             try:
                 result.check_returncode()
             except subprocess.CalledProcessError as e:
-                logging.debug(e.stderr)
+                logging.debug(e.stderr.decode("utf-8"))
                 raise
             return result.stdout.decode("utf-8")
 
@@ -181,6 +181,10 @@ class Repository(object):
         arguments = ["all-changes"]
         if skip_unreleased:
             arguments.append("--skip-unreleased")
+        return self.changes(arguments)
+
+    def changes_release_notes(self):
+        arguments = ["release-notes"]
         return self.changes(arguments)
 
     @property
