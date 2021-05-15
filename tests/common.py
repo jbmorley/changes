@@ -19,10 +19,10 @@
 # SOFTWARE.
 
 import os
-import unittest
 import subprocess
 import sys
 import tempfile
+import unittest
 
 TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)

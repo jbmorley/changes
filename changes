@@ -381,7 +381,7 @@ def main():
 
     # Fix-up the version number for any un-released current release.
     if releases[0].version is None:
-        releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 1, 0))
+        releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
 
     # Remove the empty head release if there's already an active release.
     if len(releases) > 1 and releases[0].is_empty:

@@ -75,7 +75,7 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("initial commit"),
             ])
-            self.assertEqual(repository.changes(["current-version"]), "0.1.0\n")
+            self.assertEqual(repository.changes(["current-version"]), "0.0.0\n")
 
     def test_current_version(self):
         with Repository() as repository:
