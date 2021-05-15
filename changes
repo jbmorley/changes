@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import argparse
 import collections
 import copy
 import enum
@@ -31,9 +30,40 @@ import subprocess
 import sys
 import tempfile
 
+import cli
+
 
 verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
 logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
+
+
+class Type(enum.Enum):
+    BREAKING_CHANGE = "BREAKING CHANGE"
+    CI = "ci"
+    DOCUMENTATION = "docs"
+    FEATURE = "feat"
+    FIX = "fix"
+    UNKNOWN = "UNKNOWN"
+
+
+OPERATIONS = {
+    Type.BREAKING_CHANGE: lambda commit, version: version.bump_major(),
+    Type.CI: None,
+    Type.DOCUMENTATION: None,
+    Type.FEATURE: lambda commit, version: version.bump_minor(),
+    Type.FIX: lambda commit, version: version.bump_patch(),
+    Type.UNKNOWN: None,
+}
+
+
+TYPE_TO_SECTION = {
+    Type.BREAKING_CHANGE: "Changes",
+    Type.CI: "Ignore",
+    Type.DOCUMENTATION: "Ignore",
+    Type.FEATURE: "Changes",
+    Type.FIX: "Fixes",
+    Type.UNKNOWN: "Ignore",
+}
 
 
 class Version(object):
@@ -71,6 +101,83 @@ class Version(object):
         return f"{self.major}.{self.minor}.{self.patch}"
 
 
+class Commit(object):
+
+    def __init__(self, sha, message, tags, version):
+        self.sha = sha
+        self.message = message
+        self.tags = tags
+        self.version = version
+
+
+class Message(object):
+
+    def __init__(self, type, scope, breaking_change, description):
+        self.type = type
+        self.scope = scope
+        self.breaking_change = breaking_change
+        self.description = description
+
+
+class Release(object):
+
+    def __init__(self, version, changes):
+        self.version = version
+        self.changes = changes
+        self.has_tag = False  # TODO: Rename this to 'unreleased'
+
+    def set_previous_version(self, previous_version):
+        """Recomputes the current version based on the previous version by applying the changes in order."""
+        self.version = copy.deepcopy(previous_version)
+        for commit in reversed(self.changes):
+            if commit.message.type in OPERATIONS and OPERATIONS[commit.message.type] is not None:
+                if commit.message.breaking_change:
+                    self.version.bump_major()
+                else:
+                    OPERATIONS[commit.message.type](commit, self.version)
+            else:
+                logging.warning("Ignoring commit: '%s'", commit.message.description)
+
+    @property
+    def is_empty(self):
+        for change in self.changes:
+            if OPERATIONS[change.message.type] is not None:
+                return False
+        return True
+
+
+class History(object):
+
+    def __init__(self, scope=None):
+        self.scope = scope
+        self._load()
+
+    def _load(self):
+
+        # Get all the changes on the main branch.
+        all_changes = get_commits(scope=self.scope)
+
+        # Group the changes by release.
+        releases = []
+        releases.append(Release(None, []))
+        for change in all_changes:
+            if change.version is not None:
+                release = Release(change.version, [])
+                release.has_tag = True
+                releases.append(release)
+            releases[-1].changes.append(change)
+
+        # Fix-up the version number for any un-released current release.
+        if releases[0].version is None:
+            releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
+
+        # Remove the empty head release if there's already an active release.
+        if len(releases) > 1 and releases[0].is_empty:
+            releases.pop(0)
+
+        self.releases = releases
+
+
 def run(command, dry_run=False):
     if dry_run:
         logging.info(command)
@@ -101,24 +208,6 @@ def parse_version(tag, scope=None):
     raise ValueError("Not a version")
 
 
-class Commit(object):
-
-    def __init__(self, sha, message, tags, version):
-        self.sha = sha
-        self.message = message
-        self.tags = tags
-        self.version = version
-
-
-class Type(enum.Enum):
-    BREAKING_CHANGE = "BREAKING CHANGE"
-    CI = "ci"
-    DOCUMENTATION = "docs"
-    FEATURE = "feat"
-    FIX = "fix"
-    UNKNOWN = "UNKNOWN"
-
-
 def version_from_tags(tags, scope=None):
     for tag in tags:
         try:
@@ -128,7 +217,7 @@ def version_from_tags(tags, scope=None):
     return None
 
 
-def get_commits(scope=None, stop=lambda x: False):
+def get_commits(scope=None):
     # Guard against empty repositories.
     count = int(run(["git", "rev-list", "--all", "--count"])[0])
     if count < 1:
@@ -145,28 +234,7 @@ def get_commits(scope=None, stop=lambda x: False):
         sha, message = c.split(":", 1)
         commit = Commit(sha, parse_message(message), get_tags(sha), version_from_tags(get_tags(sha), scope))
         results.append(commit)
-        if stop(commit):
-            return results
     return results
-
-
-OPERATIONS = {
-    Type.BREAKING_CHANGE: lambda commit, version: version.bump_major(),
-    Type.CI: None,
-    Type.DOCUMENTATION: None,
-    Type.FEATURE: lambda commit, version: version.bump_minor(),
-    Type.FIX: lambda commit, version: version.bump_patch(),
-    Type.UNKNOWN: None,
-}
-
-
-class Message(object):
-
-    def __init__(self, type, scope, breaking_change, description):
-        self.type = type
-        self.scope = scope
-        self.breaking_change = breaking_change
-        self.description = description
 
 
 def parse_message(message):
@@ -185,16 +253,6 @@ def parse_message(message):
                    scope=None,
                    breaking_change=False,
                    description=message.strip())
-
-
-TYPE_TO_SECTION = {
-    Type.BREAKING_CHANGE: "Changes",
-    Type.CI: "Ignore",
-    Type.DOCUMENTATION: "Ignore",
-    Type.FEATURE: "Changes",
-    Type.FIX: "Fixes",
-    Type.UNKNOWN: "Ignore",
-}
 
 
 def format_messages(messages, section):
@@ -236,172 +294,128 @@ def format_releases(releases):
     return result
 
 
-class Release(object):
+def resolve_scope(options):
+    if options.scope is not None:
+        return options.scope
+    try:
+        return options.legacy_scope
+    except AttributeError:
+        return None
 
-    def __init__(self, version, changes):
-        self.version = version
-        self.changes = changes
-        self.has_tag = False  # TODO: Rename this to 'unreleased'
 
-    def set_previous_version(self, previous_version):
-        """Recomputes the current version based on the previous version by applying the changes in order."""
-        self.version = copy.deepcopy(previous_version)
-        for commit in reversed(self.changes):
-            if commit.message.type in OPERATIONS and OPERATIONS[commit.message.type] is not None:
-                if commit.message.breaking_change:
-                    self.version.bump_major()
-                else:
-                    OPERATIONS[commit.message.type](commit, self.version)
+@cli.command("current-version", help="current version accounting for the unreleased changes, or released vesrion if there are no unreleased changes", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+])
+def command_current_version(options):
+    history = History(scope=resolve_scope(options))
+    releases = history.releases
+    print(releases[0].version)
+
+
+@cli.command("current-notes", help="formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+])
+def command_current_notes(options):
+    history = History(scope=resolve_scope(options))
+    releases = history.releases
+    print(format_changes(releases[0].changes), end="")
+
+
+@cli.command("released-version", help="released version number as given by the most recent git version tag", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+])
+def command_released_version(options):
+    history = History(scope=resolve_scope(options))
+    releases = history.releases
+    active_release = next(release for release in releases if release.has_tag)
+    print(active_release.version)
+
+
+@cli.command("release", help="a", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+    cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
+    cli.Argument("--command", help="command to run to perform the release"),
+    cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
+    cli.Argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed"),
+])
+def command_release(options):
+    history = History(scope=resolve_scope(options))
+    releases = history.releases
+    if releases[0].has_tag:
+        # There aren't any unreleased versions.
+        if options.skip_if_empty:
+            exit()
+        logging.error("No versions to release.")
+        exit(1)
+    version = releases[0].version
+    logging.info("Releasing %s...", version)
+    tag = str(version)
+    if options.scope is not None:
+        tag = f"{options.scope}_{tag}"
+    logging.info("Creating tag '%s'...", tag)
+    run(["git", "tag", tag], dry_run=options.dry_run)
+
+    title = str(version)
+    if options.scope is not None:
+        title = f"{options.scope} {title}"
+
+    if options.push:
+        logging.info("Pushing tag '%s'...", tag)
+        run(["git", "push", "origin", tag], dry_run=options.dry_run)
+
+    if options.command is not None:
+        logging.info("Running command...")
+        success = True
+
+        notes = format_changes(releases[0].changes)
+
+        # Create a temporary directory containing the notes.
+        with tempfile.NamedTemporaryFile() as notes_file:
+            with open(notes_file.name, "w") as fh:
+                fh.write(notes)
+
+            # Set up the environment.
+            env = copy.deepcopy(os.environ)
+            env['CHANGES_TITLE'] = title
+            env['CHANGES_VERSION'] = str(version)
+            env['CHANGES_TAG'] = tag
+            env['CHANGES_NOTES'] = notes
+            env['CHANGES_NOTES_FILE'] = notes_file.name
+
+            # Run the command.
+            if options.dry_run:
+                logging.info(options.command)
             else:
-                logging.warning("Ignoring commit: '%s'", commit.message.description)
+                result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
+                try:
+                    result.check_returncode()
+                    logging.info(result.stdout.decode("utf-8").strip())
+                except subprocess.CalledProcessError as e:
+                    logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
+                    run(["git", "tag", "-d", tag])
+                    run(["git", "push", "origin", f":{tag}"])
+                    success = False
 
-    @property
-    def is_empty(self):
-        for change in self.changes:
-            if OPERATIONS[change.message.type] is not None:
-                return False
-        return True
-
-
-def command_current_version(parser):
-    def perform(options, releases):
-        print(releases[0].version)
-    return perform
-
-
-def command_current_notes(parser):
-    def perform(options, releases):
-        print(format_changes(releases[0].changes), end="")
-    return perform
-
-
-def command_released_version(parser):
-    def perform(options, releases):
-        active_release = next(release for release in releases if release.has_tag)
-        print(active_release.version)
-    return perform
-
-
-def command_release(parser):
-    parser.add_argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release")
-    parser.add_argument("--command", help="command to run to perform the release")
-    parser.add_argument("--push", action="store_true", default=False, help="push the newly created tag")
-    parser.add_argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed")
-    def perform(options, releases):
-        if releases[0].has_tag:
-            # There aren't any unreleased versions.
-            if options.skip_if_empty:
-                exit()
-            logging.error("No versions to release.")
+        if not success:
             exit(1)
-        version = releases[0].version
-        logging.info("Releasing %s...", version)
-        tag = str(version)
-        if options.scope is not None:
-            tag = f"{options.scope}_{tag}"
-        logging.info("Creating tag '%s'...", tag)
-        run(["git", "tag", tag], dry_run=options.dry_run)
 
-        title = str(version)
-        if options.scope is not None:
-            title = f"{options.scope} {title}"
-
-        if options.push:
-            logging.info("Pushing tag '%s'...", tag)
-            run(["git", "push", "origin", tag], dry_run=options.dry_run)
-
-        if options.command is not None:
-            logging.info("Running command...")
-            success = True
-
-            notes = format_changes(releases[0].changes)
-
-            # Create a temporary directory containing the notes.
-            with tempfile.NamedTemporaryFile() as notes_file:
-                with open(notes_file.name, "w") as fh:
-                    fh.write(notes)
-
-                # Set up the environment.
-                env = copy.deepcopy(os.environ)
-                env['CHANGES_TITLE'] = title
-                env['CHANGES_VERSION'] = str(version)
-                env['CHANGES_TAG'] = tag
-                env['CHANGES_NOTES'] = notes
-                env['CHANGES_NOTES_FILE'] = notes_file.name
-
-                # Run the command.
-                if options.dry_run:
-                    logging.info(options.command)
-                else:
-                    result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
-                    try:
-                        result.check_returncode()
-                        logging.info(result.stdout.decode("utf-8").strip())
-                    except subprocess.CalledProcessError as e:
-                        logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
-                        run(["git", "tag", "-d", tag])
-                        run(["git", "push", "origin", f":{tag}"])
-                        success = False
-
-            if not success:
-                exit(1)
-
-        logging.info("Done.")
-
-    return perform
+    logging.info("Done.")
 
 
-def command_all_changes(parser):
-    def perform(options, releases):
-        print(format_releases(releases), end="")
-    return perform
-
-
-COMMANDS = {
-    "current-version": (command_current_version, "current version accounting for the unreleased changes, or released vesrion if there are no unreleased changes"),
-    "current-notes": (command_current_notes, "formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes"),
-    "released-version": (command_released_version, "released version number as given by the most recent git version tag"),
-    "release": (command_release, "a"),
-    "all-changes": (command_all_changes, "a"),
-}
+@cli.command("all-changes", help="a", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages")
+])
+def command_all_changes(options):
+    history = History(scope=resolve_scope(options))
+    print(format_releases(history.releases), end="")
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--scope", help="scope to be used in tags and commit messages")
+    parser = cli.CommandParser(description="Lightweight tool for managing Semantic Versioining using Conventional Commits")
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
-    subparsers = parser.add_subparsers(help="command")
-    for command, details in COMMANDS.items():
-        subparser = subparsers.add_parser(command, help=details[1])
-        subparser.set_defaults(fn=details[0](subparser))
-    options = parser.parse_args()
-
-    # Get all the changes on the main branch.
-    all_changes = get_commits(scope=options.scope)
-
-    # Group the changes by release.
-    releases = []
-    releases.append(Release(None, []))
-    for change in all_changes:
-        if change.version is not None:
-            release = Release(change.version, [])
-            release.has_tag = True
-            releases.append(release)
-        releases[-1].changes.append(change)
-
-    # Fix-up the version number for any un-released current release.
-    if releases[0].version is None:
-        releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
-
-    # Remove the empty head release if there's already an active release.
-    if len(releases) > 1 and releases[0].is_empty:
-        releases.pop(0)
-
-    # Run the command.
-    if 'fn' not in options:
-        logging.error("No command specified.")
-        exit(1)
-    options.fn(options, releases)
+    if "--scope" in sys.argv:
+        parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
+    parser.run()
 
 
 if __name__ == "__main__":

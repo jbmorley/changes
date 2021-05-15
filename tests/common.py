@@ -18,14 +18,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
 
+
+debug = False
+try:
+    debug = os.environ["DEBUG"] == "1"
+except KeyError:
+    pass
+logging.basicConfig(level=logging.DEBUG if debug else logging.INFO, format="[%(levelname)s] %(message)s")
+
+
 TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
+
 
 def configure_path():
     sys.path.append(ROOT_DIRECTORY)
@@ -97,7 +108,11 @@ class Repository(object):
             if env is not None:
                 kwargs["env"] = env
             result = subprocess.run(command, capture_output=True, **kwargs)
-            result.check_returncode()
+            try:
+                result.check_returncode()
+            except subprocess.CalledProcessError as e:
+                logging.debug(e.stderr)
+                raise
             return result.stdout.decode("utf-8")
 
 
@@ -147,8 +162,11 @@ class Repository(object):
         environment["PATH"] = environment["PATH"] + ":" + ROOT_DIRECTORY
         return self.run(["changes"] + arguments, env=environment)
 
-    def changes_current_version(self):
-        return self.changes(["current-version"]).strip()
+    def changes_current_version(self, scope=None):
+        arguments = ["current-version"]
+        if scope is not None:
+            arguments.extend(["--scope", scope])
+        return self.changes(arguments).strip()
 
     def changes_released_version(self):
         return self.changes(["released-version"]).strip()
