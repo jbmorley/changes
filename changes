@@ -403,11 +403,15 @@ def command_release(options):
 
 
 @cli.command("all-changes", help="a", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages")
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions")
 ])
 def command_all_changes(options):
     history = History(scope=resolve_scope(options))
-    print(format_releases(history.releases), end="")
+    releases = history.releases
+    if options.skip_unreleased and not releases[0].has_tag:
+        releases.pop(0)
+    print(format_releases(releases), end="")
 
 
 def main():

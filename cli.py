@@ -22,6 +22,7 @@
 
 import argparse
 import functools
+import logging
 
 
 COMMANDS = {}
