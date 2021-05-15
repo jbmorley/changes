@@ -143,7 +143,7 @@ class CLITestCase(unittest.TestCase):
     def test_released_version(self):
         with Repository() as repository:
             repository.perform([
-                EmptyCommit("initia commit"),
+                EmptyCommit("initial commit"),
                 Tag("2.1.3"),
             ])
             self.assertEqual(repository.changes_released_version(), "2.1.3")
@@ -153,6 +153,56 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not affect the released version"),
             ])
             self.assertEqual(repository.changes_released_version(), "2.1.3")
+
+    def test_current_notes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.0.0")
+            ])
+            self.assertEqual(repository.current_notes(), "")
+            repository.perform([
+                EmptyCommit("fix: Doesn't crash"),
+                EmptyCommit("fix: Works"),
+            ])
+            self.assertEqual(repository.current_notes(),
+"""**Fixes**
+
+- Doesn't crash
+- Works
+""")
+            repository.perform([
+                EmptyCommit("feat: New Shiny"),
+            ])
+            self.assertEqual(repository.current_notes(),
+"""**Changes**
+
+- New Shiny
+
+**Fixes**
+
+- Doesn't crash
+- Works
+""")
+            repository.changes_release()
+            self.assertEqual(repository.current_notes(),
+"""**Changes**
+
+- New Shiny
+
+**Fixes**
+
+- Doesn't crash
+- Works
+""")
+            repository.perform([
+                EmptyCommit("feat: More Shiny"),
+            ])
+            self.assertEqual(repository.current_notes(),
+"""**Changes**
+
+- More Shiny
+""")
 
 
 if __name__ == '__main__':

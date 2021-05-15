@@ -192,12 +192,11 @@ TYPE_TO_SECTION = {
 def format_messages(messages, section):
     result = ""
     result = result + f"**{section}**\n\n"
-    for message in messages:
+    for message in reversed(messages):
         result = result + f"- {message.description}"
         if message.scope is not None:
             result = result + f" ({message.scope})"
         result = result + "\n"
-    result = result + "\n"
     return result
 
 
@@ -206,11 +205,12 @@ def format_changes(changes):
     sections = collections.defaultdict(list)
     for commit in changes:
         sections[TYPE_TO_SECTION[commit.message.type]].append(commit.message)
+    content = []
     if "Changes" in sections:
-        result = result + format_messages(sections["Changes"], "Changes")
+        content.append(format_messages(sections["Changes"], "Changes"))
     if "Fixes" in sections:
-        result = result + format_messages(sections["Fixes"], "Fixes")
-    return result
+        content.append(format_messages(sections["Fixes"], "Fixes"))
+    return "\n".join(content)
 
 
 def format_release(release):
