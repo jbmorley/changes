@@ -18,14 +18,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
 
+
+debug = False
+try:
+    debug = os.environ["DEBUG"] == "1"
+except KeyError:
+    pass
+logging.basicConfig(level=logging.DEBUG if debug else logging.INFO, format="[%(levelname)s] %(message)s")
+
+
 TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
+
 
 def configure_path():
     sys.path.append(ROOT_DIRECTORY)
@@ -100,7 +111,7 @@ class Repository(object):
             try:
                 result.check_returncode()
             except subprocess.CalledProcessError as e:
-                print(e.stderr)
+                logging.debug(e.stderr)
                 raise
             return result.stdout.decode("utf-8")
 
