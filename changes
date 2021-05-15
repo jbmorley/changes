@@ -347,7 +347,7 @@ def command_released_version(options):
 def command_release(options):
     history = History(scope=resolve_scope(options))
     releases = history.releases
-    if releases[0].has_tag:
+    if releases[0].has_tag or releases[0].is_empty:
         # There aren't any unreleased versions.
         if options.skip_if_empty:
             exit()
