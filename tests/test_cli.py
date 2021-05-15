@@ -26,7 +26,7 @@ import unittest
 
 import common
 
-from common import Commit, EmptyCommit, Repository, Tag
+from common import Commit, EmptyCommit, Release, Repository, Tag
 
 common.configure_path()
 
@@ -223,6 +223,48 @@ class CLITestCase(unittest.TestCase):
 """**Changes**
 
 - More Shiny
+""")
+
+# TODO: Support --skip-unreleased
+#       --only-released
+
+    def test_release_notes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(),
+                EmptyCommit("fix: Fix something"),
+                EmptyCommit("fix: Fix something else"),
+                Release(),
+                EmptyCommit("fix!: Fix something breaking compatibility"),
+                Release(),
+                EmptyCommit("feat: Unreleased feature"),
+            ])
+            self.assertEqual(repository.changes_all_changes(),
+"""# 1.1.0 (Unreleased)
+
+**Changes**
+
+- Unreleased feature
+
+# 1.0.0
+
+**Fixes**
+
+- Fix something breaking compatibility
+
+# 0.1.1
+
+**Fixes**
+
+- Fix something
+- Fix something else
+
+# 0.1.0
+
+**Changes**
+
+- Initial commit
 """)
 
 
