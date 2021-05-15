@@ -177,8 +177,11 @@ class Repository(object):
     def changes_release(self):
         return self.changes(["release"])
 
-    def changes_all_changes(self):
-        return self.changes(["all-changes"])
+    def changes_all_changes(self, skip_unreleased=False):
+        arguments = ["all-changes"]
+        if skip_unreleased:
+            arguments.append("--skip-unreleased")
+        return self.changes(arguments)
 
     @property
     def path(self):

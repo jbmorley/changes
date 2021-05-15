@@ -286,6 +286,39 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
+    def test_all_changes_skip_unreleased(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(),
+                EmptyCommit("fix: Fix something"),
+                EmptyCommit("fix: Fix something else"),
+                Release(),
+                EmptyCommit("fix!: Fix something breaking compatibility"),
+                Release(),
+                EmptyCommit("feat: Unreleased feature"),
+            ])
+            self.assertEqual(repository.changes_all_changes(skip_unreleased=True),
+"""# 1.0.0
+
+**Fixes**
+
+- Fix something breaking compatibility
+
+# 0.1.1
+
+**Fixes**
+
+- Fix something
+- Fix something else
+
+# 0.1.0
+
+**Changes**
+
+- Initial commit
+""")
+
 
 if __name__ == '__main__':
     unittest.main()
