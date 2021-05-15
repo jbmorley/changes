@@ -162,25 +162,28 @@ OPERATIONS = {
 
 class Message(object):
 
-    def __init__(self, type, scope, description):
+    def __init__(self, type, scope, breaking_change, description):
         self.type = type
         self.scope = scope
+        self.breaking_change = breaking_change
         self.description = description
 
 
 def parse_message(message):
-    cc_parser = re.compile(r"^(.+?)(\((.+?)\))?:(.+)$")
+    cc_parser = re.compile(r"^(.+?)(\((.+?)\))?(\!)?:(.+)$")
     match = cc_parser.match(message)
     if match is not None:
-        (cc_type, cc_scope, cc_description) = (match.group(1), match.group(3), match.group(4))
+        (cc_type, cc_scope, cc_break, cc_description) = (match.group(1), match.group(3), match.group(4), match.group(5))
         try:
             return Message(type=Type(cc_type),
                            scope=cc_scope,
+                           breaking_change=(cc_break == "!"),
                            description=cc_description.strip())
         except ValueError:
             pass
     return Message(type=Type.UNKNOWN,
                    scope=None,
+                   breaking_change=False,
                    description=message.strip())
 
 
@@ -246,7 +249,10 @@ class Release(object):
         self.version = copy.deepcopy(previous_version)
         for commit in reversed(self.changes):
             if commit.message.type in OPERATIONS and OPERATIONS[commit.message.type] is not None:
-                OPERATIONS[commit.message.type](commit, self.version)
+                if commit.message.breaking_change:
+                    self.version.bump_major()
+                else:
+                    OPERATIONS[commit.message.type](commit, self.version)
             else:
                 logging.warning("Ignoring commit: '%s'", commit.message.description)
 
