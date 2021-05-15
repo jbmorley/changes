@@ -231,9 +231,8 @@ def format_release(release):
 
 
 def format_releases(releases):
-    result = ""
-    for release in releases:
-        result = result + format_release(release)
+    content = [format_release(release) for release in releases]
+    return "\n".join(content)
     return result
 
 

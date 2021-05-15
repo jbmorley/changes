@@ -70,6 +70,12 @@ class Tag(object):
         repository.tag(self.tagname)
 
 
+class Release(object):
+
+    def perform(self, repository):
+        repository.changes_release()
+
+
 class Repository(object):
 
     def __init__(self):
@@ -152,6 +158,9 @@ class Repository(object):
 
     def changes_release(self):
         return self.changes(["release"])
+
+    def changes_all_changes(self):
+        return self.changes(["all-changes"])
 
     @property
     def path(self):
