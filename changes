@@ -129,6 +129,11 @@ def version_from_tags(tags, scope=None):
 
 
 def get_commits(scope=None, stop=lambda x: False):
+    # Guard against empty repositories.
+    count = int(run(["git", "rev-list", "--all", "--count"])[0])
+    if count < 1:
+        return []
+
     results = []
     command = ["git", "log", "--pretty=format:%H:%s"]
     try:
