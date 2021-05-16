@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import argparse
 import collections
 import copy
 import enum
@@ -309,7 +310,7 @@ def resolve_scope(options):
         return None
 
 
-@cli.command("current-version", help="current version accounting for the unreleased changes, or released vesrion if there are no unreleased changes", arguments=[
+@cli.command("current-version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
 ])
 def command_current_version(options):
@@ -424,9 +425,22 @@ def command_release_notes(options):
     history = History(scope=resolve_scope(options))
     print(history.format_changes(skip_unreleased=True), end="")
 
+DESCRIPTION = """
+
+Lightweight and (hopefully) unopinionated tool for managing Semantic Versioning using Conventional Commits.
+
+Changes currently a number of commands that can be assembled in whatever way fits your workflow.
+"""
+
+EPILOG = """
+You can find out more about Conventional Commits and Semantic Versioning at the following links:
+
+- Conventional Commits: https://www.conventionalcommits.org
+- Semantic Versioning: https://semver.org
+"""
 
 def main():
-    parser = cli.CommandParser(description="Lightweight tool for managing Semantic Versioining using Conventional Commits")
+    parser = cli.CommandParser(description=DESCRIPTION, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:
         parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
