@@ -425,7 +425,12 @@ def command_release_notes(options):
     history = History(scope=resolve_scope(options))
     print(history.format_changes(skip_unreleased=True), end="")
 
-DESCRIPTION = "Lightweight and (hopefully) unopinionated tool for managing Semantic Versioining using Conventional Commits"
+DESCRIPTION = """
+
+Lightweight and (hopefully) unopinionated tool for managing Semantic Versioning using Conventional Commits.
+
+Changes currently a number of commands that can be assembled in whatever way fits your workflow.
+"""
 
 EPILOG = """
 You can find out more about Conventional Commits and Semantic Versioning at the following links:
