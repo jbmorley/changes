@@ -43,5 +43,9 @@ jobs:
         submodules: recursive
         fetch-depth: 0
 
+    - name: Install Python dependencies
+      run: |
+        pipenv install
+
     - name: Run tests
       run: scripts/test.sh
