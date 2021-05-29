@@ -25,6 +25,8 @@ import sys
 import tempfile
 import unittest
 
+import yaml
+
 
 debug = False
 try:
@@ -115,6 +117,12 @@ class Repository(object):
                 raise
             return result.stdout.decode("utf-8")
 
+    def write_file(self, path, contents):
+        with open(os.path.join(self.path, path), "w") as fh:
+            fh.write(contents)
+
+    def write_yaml(self, path, contents):
+        self.write_file(path, yaml.dump(contents))
 
     def git(self, arguments):
         return self.run(["git"] + arguments)

@@ -31,6 +31,8 @@ import subprocess
 import sys
 import tempfile
 
+import yaml
+
 import cli
 
 
@@ -67,6 +69,20 @@ TYPE_TO_SECTION = {
 }
 
 
+class Chdir(object):
+
+    def __init__(self, path):
+        self.path = os.path.abspath(path)
+
+    def __enter__(self):
+        self.pwd = os.getcwd()
+        os.chdir(self.path)
+        return self.path
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.chdir(self.pwd)
+
+
 class Version(object):
 
     def __init__(self, major=0, minor=0, patch=0):
@@ -101,31 +117,93 @@ class Version(object):
     def __str__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
 
+    def __eq__(self, other):
+        if self.major != other.major:
+            return False
+        if self.minor != other.minor:
+            return False
+        if self.patch != other.patch:
+            return False
+        return True
 
-class Commit(object):
+    def __lt__(self, other):
+        if self == other:
+            return False
+        if self.major > other.major:
+            return False
+        if self.major < other.major:
+            return True
+        if self.minor > other.minor:
+            return False
+        if self.minor < other.minor:
+            return True
+        if self.patch > other.patch:
+            return False
+        return True
+
+    def __hash__(self):
+        return str(self).__hash__()
+
+    @classmethod
+    def from_string(self, string, strip_scope=None):
+        return parse_version(string, scope=strip_scope)
+
+
+class Change(object):
+
+    def __init__(self, message):
+        self.message = message
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.message == other.message
+
+    def __str__(self):
+        return str(self.message)
+
+
+class Commit(Change):
 
     def __init__(self, sha, message, tags, version):
+        super().__init__(message)
         self.sha = sha
-        self.message = message
         self.tags = tags
         self.version = version
 
 
 class Message(object):
 
+    # TODO: Change the ordering of these and add defaults
     def __init__(self, type, scope, breaking_change, description):
         self.type = type
         self.scope = scope
         self.breaking_change = breaking_change
         self.description = description
 
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        if self.type != other.type:
+            return False
+        if self.scope != other.scope:
+            return False
+        if self.breaking_change != other.breaking_change:
+            return False
+        if self.description != other.description:
+            return False
+        return True
+
+    def __str__(self):
+        return self.description
+
 
 class Release(object):
 
-    def __init__(self, version, changes):
+    def __init__(self, version, changes, has_tag=False):
         self.version = version
         self.changes = changes
-        self.has_tag = False  # TODO: Rename this to 'unreleased'
+        self.has_tag = has_tag  # TODO: Rename this to 'unreleased'
 
     def set_previous_version(self, previous_version):
         """Recomputes the current version based on the previous version by applying the changes in order."""
@@ -146,37 +224,66 @@ class Release(object):
                 return False
         return True
 
+    def merge(self, release):
+        self.changes.extend(release.changes)
+
 
 class History(object):
 
-    def __init__(self, scope=None):
+    def __init__(self, path, scope=None, history=None):
+        self.path = os.path.abspath(path)
         self.scope = scope
+        self.history = os.path.abspath(history) if history is not None else None
         self._load()
 
     def _load(self):
+        with Chdir(self.path):
 
-        # Get all the changes on the main branch.
-        all_changes = get_commits(scope=self.scope)
+            # Get all the changes on the main branch.
+            all_changes = get_commits(scope=self.scope)
 
-        # Group the changes by release.
-        releases = []
-        releases.append(Release(None, []))
-        for change in all_changes:
-            if change.version is not None:
-                release = Release(change.version, [])
-                release.has_tag = True
-                releases.append(release)
-            releases[-1].changes.append(change)
+            # Group the changes by release.
+            releases = []
+            releases.append(Release(None, []))
+            for change in all_changes:
+                if change.version is not None:
+                    release = Release(change.version, [], has_tag=True)
+                    releases.append(release)
+                releases[-1].changes.append(change)
 
-        # Fix-up the version number for any un-released current release.
-        if releases[0].version is None:
-            releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
+            # Fix-up the version number for any un-released current release.
+            if releases[0].version is None:
+                releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
 
-        # Remove the empty head release if there's already an active release.
-        if len(releases) > 1 and releases[0].is_empty:
-            releases.pop(0)
+            # Remove the empty head release if there's already an active release.
+            if len(releases) > 1 and releases[0].is_empty:
+                releases.pop(0)
 
-        self.releases = releases
+            # self.releases = releases
+
+            releases_by_version = {release.version: release for release in releases}
+
+            # TODO: Merge these and test the merge operation.
+            # TODO: Test to ensure the imported history has actual content.
+            # TODO: Separate this out into a method that can be tested.
+            if self.history is not None:
+                with open(self.history) as fh:
+                    override = yaml.load(fh, Loader=yaml.SafeLoader)
+                for version_string, changes in override.items():
+                    messages = [parse_message(change) for change in changes]
+                    commits = [Change(message=message) for message in messages]
+                    version = Version.from_string(version_string, self.scope)
+                    release = Release(version, commits, has_tag=True)
+                    try:
+                        releases_by_version[version].merge(release)
+                    except KeyError:
+                        releases_by_version[version] = release
+                    # self.releases.append(Release(version, commits, has_tag=True))
+            # exit()
+
+            # TODO: Validate the schema of the history input file.
+
+            self.releases = list(sorted(releases_by_version.values(), key=lambda release: release.version, reverse=True))
 
     def format_changes(self, skip_unreleased=False):
         releases = list(self.releases)
@@ -239,7 +346,8 @@ def get_commits(scope=None):
         exit(1)
     for c in commits:
         sha, message = c.split(":", 1)
-        commit = Commit(sha, parse_message(message), get_tags(sha), version_from_tags(get_tags(sha), scope))
+        tags = get_tags(sha)
+        commit = Commit(sha, parse_message(message), tags, version_from_tags(tags, scope))
         results.append(commit)
     return results
 
@@ -314,7 +422,7 @@ def resolve_scope(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
 ])
 def command_current_version(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     print(releases[0].version)
 
@@ -323,7 +431,7 @@ def command_current_version(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
 ])
 def command_current_notes(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     print(format_changes(releases[0].changes), end="")
 
@@ -332,7 +440,7 @@ def command_current_notes(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
 ])
 def command_released_version(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     active_release = next(release for release in releases if release.has_tag)
     print(active_release.version)
@@ -346,7 +454,7 @@ def command_released_version(options):
     cli.Argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed"),
 ])
 def command_release(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     if releases[0].has_tag or releases[0].is_empty:
         # There aren't any unreleased versions.
@@ -411,10 +519,11 @@ def command_release(options):
 
 @cli.command("all-changes", help="output changes for all versions", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions")
+    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
+    cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
 ])
 def command_all_changes(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options))
     print(history.format_changes(skip_unreleased=options.skip_unreleased), end="")
 
 
@@ -422,7 +531,7 @@ def command_all_changes(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
 ])
 def command_release_notes(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     print(history.format_changes(skip_unreleased=True), end="")
 
 DESCRIPTION = """
