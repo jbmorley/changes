@@ -168,6 +168,7 @@ class Commit(Change):
     def __init__(self, sha, message, tags, version):
         super().__init__(message)
         self.sha = sha
+
         self.tags = tags
         self.version = version
 
@@ -248,6 +249,7 @@ class History(object):
             for change in all_changes:
                 if change.version is not None:
                     release = Release(change.version, [], has_tag=True)
+
                     releases.append(release)
                 releases[-1].changes.append(change)
 
@@ -423,11 +425,11 @@ def resolve_scope(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
-@cli.command("current-version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
+
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
-def command_current_version(options):
+def command_version(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     release = releases[0]
@@ -445,14 +447,7 @@ def command_current_notes(options):
     print(format_changes(releases[0].changes), end="")
 
 
-@cli.command("released-version", help="released version number as given by the most recent git version tag", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_released_version(options):
-    history = History(path=os.getcwd(), scope=resolve_scope(options))
-    releases = history.releases
-    active_release = next(release for release in releases if release.has_tag)
-    print(active_release.version)
+
 
 
 @cli.command("release", help="a", arguments=[
