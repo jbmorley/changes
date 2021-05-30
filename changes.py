@@ -41,7 +41,6 @@ logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%
 
 
 class Type(enum.Enum):
-    BREAKING_CHANGE = "BREAKING CHANGE"
     CI = "ci"
     DOCUMENTATION = "docs"
     FEATURE = "feat"
@@ -50,7 +49,6 @@ class Type(enum.Enum):
 
 
 OPERATIONS = {
-    Type.BREAKING_CHANGE: lambda commit, version: version.bump_major(),
     Type.CI: None,
     Type.DOCUMENTATION: None,
     Type.FEATURE: lambda commit, version: version.bump_minor(),
@@ -60,7 +58,6 @@ OPERATIONS = {
 
 
 TYPE_TO_SECTION = {
-    Type.BREAKING_CHANGE: "Changes",
     Type.CI: "Ignore",
     Type.DOCUMENTATION: "Ignore",
     Type.FEATURE: "Changes",
