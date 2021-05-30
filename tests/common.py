@@ -188,10 +188,12 @@ class Repository(object):
             arguments.extend(["--scope", scope])
         return self.changes(arguments)
 
-    def changes_all_changes(self, skip_unreleased=False):
+    def changes_all_changes(self, skip_unreleased=False, history=None):
         arguments = ["all-changes"]
         if skip_unreleased:
             arguments.append("--skip-unreleased")
+        if history is not None:
+            arguments.extend(["--history", history])
         return self.changes(arguments)
 
     def changes_release_notes(self):

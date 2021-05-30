@@ -272,6 +272,7 @@ class History(object):
                 for version_string, changes in override.items():
                     messages = [parse_message(change) for change in changes]
                     commits = [Change(message=message) for message in messages]
+                    commits.reverse()
                     version = Version.from_string(version_string, self.scope)
                     release = Release(version, commits, has_tag=True)
                     try:
@@ -287,8 +288,8 @@ class History(object):
 
     def format_changes(self, skip_unreleased=False):
         releases = list(self.releases)
-        if skip_unreleased and not releases[0].has_tag:
-            releases.pop(0)
+        if skip_unreleased:
+            releases = [release for release in releases if release.has_tag]
         return format_releases(releases)
 
 
@@ -418,13 +419,21 @@ def resolve_scope(options):
         return None
 
 
+@cli.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
+    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+    cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
+])
 @cli.command("current-version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+    cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
 def command_current_version(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
-    print(releases[0].version)
+    release = releases[0]
+    if options.released:
+        release = next(release for release in releases if release.has_tag)
+    print(release.version)
 
 
 @cli.command("current-notes", help="formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes", arguments=[
