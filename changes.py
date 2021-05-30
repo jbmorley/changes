@@ -310,13 +310,17 @@ def resolve_scope(options):
         return None
 
 
-@cli.command("current-version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
+@cli.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
+    cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
-def command_current_version(options):
+def command_version(options):
     history = History(scope=resolve_scope(options))
     releases = history.releases
-    print(releases[0].version)
+    release = releases[0]
+    if options.released:
+        release = next(release for release in releases if release.has_tag)
+    print(release.version)
 
 
 @cli.command("current-notes", help="formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes", arguments=[
@@ -326,16 +330,6 @@ def command_current_notes(options):
     history = History(scope=resolve_scope(options))
     releases = history.releases
     print(format_changes(releases[0].changes), end="")
-
-
-@cli.command("released-version", help="released version number as given by the most recent git version tag", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_released_version(options):
-    history = History(scope=resolve_scope(options))
-    releases = history.releases
-    active_release = next(release for release in releases if release.has_tag)
-    print(active_release.version)
 
 
 @cli.command("release", help="a", arguments=[
