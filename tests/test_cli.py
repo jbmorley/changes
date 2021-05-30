@@ -97,7 +97,7 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_version(), "0.3.0")
             repository.perform([
-                EmptyCommit("BREAKING CHANGE: this break should update the major verison"),
+                EmptyCommit("feat!: this break should update the major verison"),
             ])
             self.assertEqual(repository.changes_version(), "1.0.0")
 
@@ -123,8 +123,8 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_version(), "0.2.0")
             repository.perform([
-                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should update the minor version"),
-                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not update the minor version"),
+                EmptyCommit("feat!: this breaking change should update the major version"),
+                EmptyCommit("feat!: this breaking change should not update the major version"),
             ])
             self.assertEqual(repository.changes_version(), "1.0.0")
 
@@ -193,7 +193,7 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("fix: this fix should not affect the released version"),
                 EmptyCommit("feat: this feat should not affect the released version"),
-                EmptyCommit("BREAKING CHANGE: this BREAKING CHANGE should not affect the released version"),
+                EmptyCommit("feat!: this breaking change should not affect the released version"),
             ])
             self.assertEqual(repository.changes_version(released=True), "2.1.3")
 
