@@ -425,10 +425,6 @@ def resolve_scope(options):
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
-
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
-])
 def command_version(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
@@ -445,9 +441,6 @@ def command_current_notes(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     print(format_changes(releases[0].changes), end="")
-
-
-
 
 
 @cli.command("release", help="a", arguments=[
