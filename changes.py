@@ -165,7 +165,6 @@ class Commit(Change):
     def __init__(self, sha, message, tags, version):
         super().__init__(message)
         self.sha = sha
-
         self.tags = tags
         self.version = version
 
