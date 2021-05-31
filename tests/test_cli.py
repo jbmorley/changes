@@ -298,7 +298,7 @@ class CLITestCase(unittest.TestCase):
 - Works
 """)
 
-    def test_all_changes(self):
+    def test_notes_all(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
