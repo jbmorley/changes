@@ -198,10 +198,10 @@ class Message(object):
 
 class Release(object):
 
-    def __init__(self, version, changes, has_tag=False):
+    def __init__(self, version, changes, is_released=False):
         self.version = version
         self.changes = changes
-        self.has_tag = has_tag  # TODO: Rename this to 'unreleased'
+        self.is_released = is_released
 
     def set_previous_version(self, previous_version):
         """Recomputes the current version based on the previous version by applying the changes in order."""
@@ -245,7 +245,7 @@ class History(object):
             releases.append(Release(None, []))
             for change in all_changes:
                 if change.version is not None:
-                    release = Release(change.version, [], has_tag=True)
+                    release = Release(change.version, [], is_released=True)
 
                     releases.append(release)
                 releases[-1].changes.append(change)
@@ -288,7 +288,7 @@ class History(object):
     def format_changes(self, skip_unreleased=False):
         releases = list(self.releases)
         if skip_unreleased:
-            releases = [release for release in releases if release.has_tag]
+            releases = [release for release in releases if release.is_released]
         return format_releases(releases)
 
 
@@ -396,7 +396,7 @@ def format_changes(changes):
 
 def format_release(release):
     result = f"# {release.version}"
-    if not release.has_tag:
+    if not release.is_released:
         result = result + " (Unreleased)"
     result = result + "\n\n"
     result = result + format_changes(release.changes)
@@ -427,7 +427,7 @@ def command_version(options):
     releases = history.releases
     release = releases[0]
     if options.released:
-        release = next(release for release in releases if release.has_tag)
+        release = next(release for release in releases if release.is_released)
     print(release.version)
 
 
@@ -450,7 +450,7 @@ def command_current_notes(options):
 def command_release(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
-    if releases[0].has_tag or releases[0].is_empty:
+    if releases[0].is_released or releases[0].is_empty:
         # There aren't any unreleased versions.
         if options.skip_if_empty:
             exit()
