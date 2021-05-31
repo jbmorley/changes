@@ -172,7 +172,6 @@ class Commit(Change):
 
 class Message(object):
 
-    # TODO: Change the ordering of these and add defaults
     def __init__(self, type, scope, breaking_change, description):
         self.type = type
         self.scope = scope
