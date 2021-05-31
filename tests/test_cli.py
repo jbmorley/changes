@@ -269,7 +269,7 @@ class CLITestCase(unittest.TestCase):
 - More Shiny
 """)
 
-    def test_current_notes_released(self):
+    def test_notes_released(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
