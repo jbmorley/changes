@@ -237,7 +237,7 @@ class History(object):
     def _load(self):
         with Chdir(self.path):
 
-            # Get all the changes on the main branch.
+            # Get all the changes on the current branch.
             all_changes = get_commits(scope=self.scope)
 
             # Group the changes by release.
@@ -246,7 +246,6 @@ class History(object):
             for change in all_changes:
                 if change.version is not None:
                     release = Release(change.version, [], is_released=True)
-
                     releases.append(release)
                 releases[-1].changes.append(change)
 
