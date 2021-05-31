@@ -337,7 +337,7 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
-    def test_all_changes_skip_unreleased(self):
+    def test_notes_all_released(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
