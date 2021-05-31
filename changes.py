@@ -259,9 +259,6 @@ class History(object):
 
             releases_by_version = {release.version: release for release in releases}
 
-            # TODO: Merge these and test the merge operation.
-            # TODO: Test to ensure the imported history has actual content.
-            # TODO: Separate this out into a method that can be tested.
             if self.history is not None:
                 with open(self.history) as fh:
                     override = yaml.load(fh, Loader=yaml.SafeLoader)

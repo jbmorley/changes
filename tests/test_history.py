@@ -43,6 +43,9 @@ class HistoryTestCase(unittest.TestCase):
     # TODO: Check the ordering of the versions.
     # TODO: Ensure the output ordering matches the input ordering for the changes
     # TODO: Consider what happens with versions
+    # TODO: Test the augmentation/merge operation
+    # TODO: Object level tests for the imported history (perhaps when it's a separate method?)
+    # TODO: Single command for release notes
 
     def test_override(self):
         with Repository() as repository:
