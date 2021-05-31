@@ -146,8 +146,9 @@ class Release(object):
 
 class History(object):
 
-    def __init__(self, scope=None):
+    def __init__(self, scope=None, skip_unreleased=False):
         self.scope = scope
+        self.skip_unreleased = skip_unreleased
         self._load()
 
     def _load(self):
@@ -173,13 +174,13 @@ class History(object):
         if len(releases) > 1 and releases[0].is_empty:
             releases.pop(0)
 
-        self.releases = releases
+        if self.skip_unreleased:
+            self.releases = [release for release in releases if release.is_released]
+        else:
+            self.releases = releases
 
-    def format_changes(self, skip_unreleased=False):
-        releases = list(self.releases)
-        if skip_unreleased and not releases[0].is_released:
-            releases.pop(0)
-        return format_releases(releases)
+    def format_changes(self):
+        return format_releases(self.releases)
 
 
 def run(command, dry_run=False):
@@ -312,29 +313,16 @@ def resolve_scope(options):
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
 def command_version(options):
-    history = History(scope=resolve_scope(options))
-    releases = history.releases
-    release = releases[0]
-    if options.released:
-        release = next(release for release in releases if release.is_released)
-    print(release.version)
+    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
+    print(history.releases[0].version)
 
 
-@cli.command("current-notes", help="formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_current_notes(options):
-    history = History(scope=resolve_scope(options))
-    releases = history.releases
-    print(format_changes(releases[0].changes), end="")
-
-
-@cli.command("release", help="a", arguments=[
+@cli.command("release", help="tag the commit as a new release", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
-    cli.Argument("--command", help="command to run to perform the release"),
+    cli.Argument("--command", help="additional command to run to perform during the release; if the command fails, the release will be rolled back"),
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
-    cli.Argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed"),
+    cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
 ])
 def command_release(options):
     history = History(scope=resolve_scope(options))
@@ -400,21 +388,18 @@ def command_release(options):
     logging.info("Done.")
 
 
-@cli.command("all-changes", help="output changes for all versions", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions")
+@cli.command("notes", help="output the release notes", arguments=[
+    cli.Argument("--scope", help="filter the release notes to the given scope"),
+    cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
+    cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
 ])
-def command_all_changes(options):
-    history = History(scope=resolve_scope(options))
-    print(history.format_changes(skip_unreleased=options.skip_unreleased), end="")
+def command_notes(options):
+    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
+    if options.all:
+        print(history.format_changes(), end="")
+    else:
+        print(format_changes(history.releases[0].changes), end="")
 
-
-@cli.command("release-notes", help="output changes for all released versions", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_release_notes(options):
-    history = History(scope=resolve_scope(options))
-    print(history.format_changes(skip_unreleased=True), end="")
 
 DESCRIPTION = """
 
