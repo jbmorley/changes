@@ -167,7 +167,7 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_version(), "2.0.0")
 
-    def test_released_version_raw_output(self):
+    def test_version_released_raw_output(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -175,15 +175,15 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes(["version", "--released"]), "1.6.12\n")
 
-    def test_released_version_no_tag_fails(self):
+    def test_version_released_no_tag_fails(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
             ])
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes(["released-version"])
+                repository.changes(["version", "--released"])
 
-    def test_released_version(self):
+    def test_version_released(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -225,12 +225,12 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit"),
                 Tag("1.0.0")
             ])
-            self.assertEqual(repository.current_notes(), "")
+            self.assertEqual(repository.changes_notes(), "")
             repository.perform([
                 EmptyCommit("fix: Doesn't crash"),
                 EmptyCommit("fix: Works"),
             ])
-            self.assertEqual(repository.current_notes(),
+            self.assertEqual(repository.changes_notes(),
 """**Fixes**
 
 - Doesn't crash
@@ -239,7 +239,7 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("feat: New Shiny"),
             ])
-            self.assertEqual(repository.current_notes(),
+            self.assertEqual(repository.changes_notes(),
 """**Changes**
 
 - New Shiny
@@ -250,7 +250,7 @@ class CLITestCase(unittest.TestCase):
 - Works
 """)
             repository.changes_release()
-            self.assertEqual(repository.current_notes(),
+            self.assertEqual(repository.changes_notes(),
 """**Changes**
 
 - New Shiny
@@ -263,13 +263,42 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("feat: More Shiny"),
             ])
-            self.assertEqual(repository.current_notes(),
+            self.assertEqual(repository.changes_notes(),
 """**Changes**
 
 - More Shiny
 """)
 
-    def test_all_changes(self):
+    def test_notes_released(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.0.0")
+            ])
+            self.assertEqual(repository.changes_notes(), "")
+            repository.perform([
+                EmptyCommit("fix: Doesn't crash"),
+                EmptyCommit("fix: Works"),
+            ])
+            self.assertEqual(repository.changes_notes(released=True), "")
+            repository.changes_release()
+            self.assertEqual(repository.changes_notes(released=True),
+"""**Fixes**
+
+- Doesn't crash
+- Works
+""")
+            repository.perform([
+                EmptyCommit("feat: More Shiny"),
+            ])
+            self.assertEqual(repository.changes_notes(released=True),
+"""**Fixes**
+
+- Doesn't crash
+- Works
+""")
+
+    def test_notes_all(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
@@ -281,7 +310,7 @@ class CLITestCase(unittest.TestCase):
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_all_changes(),
+            self.assertEqual(repository.changes_notes(all=True),
 """# 1.1.0 (Unreleased)
 
 **Changes**
@@ -308,7 +337,7 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
-    def test_all_changes_skip_unreleased(self):
+    def test_notes_all_released(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
@@ -320,7 +349,7 @@ class CLITestCase(unittest.TestCase):
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_all_changes(skip_unreleased=True),
+            self.assertEqual(repository.changes_notes(all=True, released=True),
 """# 1.0.0
 
 **Fixes**
@@ -341,7 +370,7 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
-    def test_release_notes(self):
+    def test_notes(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: Initial commit"),
@@ -353,7 +382,7 @@ class CLITestCase(unittest.TestCase):
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_release_notes(),
+            self.assertEqual(repository.changes_notes(all=True, released=True),
 """# 1.0.0
 
 **Fixes**
@@ -386,7 +415,7 @@ class CLITestCase(unittest.TestCase):
                     "feat: Bar",
                 ]
             })
-            self.assertEqual(repository.changes_all_changes(skip_unreleased=True, history="history.yaml"),
+            self.assertEqual(repository.changes_notes(released=True, all=True, history="history.yaml"),
 """# 2.0.0
 
 **Changes**
@@ -413,7 +442,7 @@ class CLITestCase(unittest.TestCase):
                     "feat: Bar",
                 ]
             })
-            self.assertEqual(repository.changes_all_changes(history="history.yaml"),
+            self.assertEqual(repository.changes_notes(all=True, history="history.yaml"),
 """# 1.11.0 (Unreleased)
 
 **Changes**

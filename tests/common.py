@@ -178,8 +178,6 @@ class Repository(object):
             arguments.extend(["--released"])
         return self.changes(arguments).strip()
 
-    def current_notes(self):
-        return self.changes(["current-notes"])
 
     def changes_release(self, scope=None):
         arguments = ["release"]
@@ -187,17 +185,16 @@ class Repository(object):
             arguments.extend(["--scope", scope])
         return self.changes(arguments)
 
-    def changes_all_changes(self, skip_unreleased=False, history=None):
-        arguments = ["all-changes"]
-        if skip_unreleased:
-            arguments.append("--skip-unreleased")
+    def changes_notes(self, released=False, all=False, history=None):
+        arguments = ["notes"]
+        if released:
+            arguments.append("--released")
+        if all:
+            arguments.append("--all")
         if history is not None:
             arguments.extend(["--history", history])
         return self.changes(arguments)
 
-    def changes_release_notes(self):
-        arguments = ["release-notes"]
-        return self.changes(arguments)
 
     @property
     def path(self):
