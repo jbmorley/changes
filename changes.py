@@ -36,10 +36,6 @@ import yaml
 import cli
 
 
-verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
-logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
-
-
 class Type(enum.Enum):
     CI = "ci"
     DOCUMENTATION = "docs"
@@ -280,8 +276,13 @@ class History(object):
 def load_history(path, scope=None):
     history = {}
     with open(path) as fh:
-        override = yaml.load(fh, Loader=yaml.SafeLoader)
-    for version_string, changes in override.items():
+        contents = yaml.load(fh, Loader=yaml.SafeLoader)
+    # Check the format.
+    if not isinstance(contents, dict):
+        raise ValueError("Invalid configuration")
+    for version_string, changes in contents.items():
+        if not isinstance(version_string, str) or not isinstance(changes, list):
+            raise ValueError("Invalid configuration")
         messages = [parse_message(change) for change in changes]
         commits = [Change(message=message) for message in messages]
         commits.reverse()
@@ -527,6 +528,8 @@ You can find out more about Conventional Commits and Semantic Versioning at the 
 """
 
 def main():
+    verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
     parser = cli.CommandParser(description=DESCRIPTION, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:

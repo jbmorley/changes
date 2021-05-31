@@ -34,19 +34,9 @@ from common import EmptyCommit, Repository, Tag
 
 class HistoryTestCase(unittest.TestCase):
 
-    # TODO: Remember to test the scope.
-    # TODO: Test overlapping releases.
-    # TODO: Check ignores wrong tags
-    # TODO: Check fails with invalid config.
-    # TODO: Check the ordering of the versions.
-    # TODO: Ensure the output ordering matches the input ordering for the changes
-    # TODO: Consider what happens with versions
-    # TODO: Test the augmentation/merge operation
-    # TODO: Object level tests for the imported history (perhaps when it's a separate method?)
-    # TODO: Single command for release notes
-    # TODO: Validate the schema of the history input file.
+    # TODO: Test the scope.
 
-    def test_override(self):
+    def test_history_augmentation(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -75,6 +65,19 @@ class HistoryTestCase(unittest.TestCase):
             self.assertEqual(versions, ["21.0.0", "2.0.0"])
             self.assertEqual(history.releases[1].changes, [Change(Message(type=Type.FEATURE, scope=None, breaking_change=False, description="New feature"))])
             self.assertNotEqual(history.releases[1].changes, [Change(Message(type=Type.FIX, scope=None, breaking_change=False, description="New feature"))])
+
+    def test_invalid_configuraiton_fails(self):
+        with Repository() as repository:
+            repository.write_yaml("history.yaml", {
+                "key": "string"
+            })
+            with self.assertRaises(Exception):
+                changes.load_history(os.path.join(repository.path, "history.yaml"))
+            repository.write_yaml("history.yaml", {
+                "2.4.5": "string"
+            })
+            with self.assertRaises(ValueError):
+                changes.load_history(os.path.join(repository.path, "history.yaml"))
 
 
 if __name__ == '__main__':
