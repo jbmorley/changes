@@ -28,8 +28,6 @@ import common
 
 from common import Commit, EmptyCommit, Release, Repository, Tag
 
-common.configure_path()
-
 
 class CLITestCase(unittest.TestCase):
 

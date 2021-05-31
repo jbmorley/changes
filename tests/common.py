@@ -27,6 +27,13 @@ import unittest
 
 import yaml
 
+TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
+
+sys.path.append(ROOT_DIRECTORY)
+
+from changes import Chdir
+
 
 debug = False
 try:
@@ -34,28 +41,6 @@ try:
 except KeyError:
     pass
 logging.basicConfig(level=logging.DEBUG if debug else logging.INFO, format="[%(levelname)s] %(message)s")
-
-
-TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
-
-
-def configure_path():
-    sys.path.append(ROOT_DIRECTORY)
-
-
-class Chdir(object):
-
-    def __init__(self, path):
-        self.path = os.path.abspath(path)
-
-    def __enter__(self):
-        self.pwd = os.getcwd()
-        os.chdir(self.path)
-        return self.path
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        os.chdir(self.pwd)
 
 
 class Commit(object):

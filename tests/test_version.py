@@ -26,8 +26,6 @@ import unittest
 
 import common
 
-common.configure_path()
-
 import changes
 
 from changes import Version
