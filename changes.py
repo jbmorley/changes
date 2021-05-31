@@ -273,8 +273,6 @@ class History(object):
                     except KeyError:
                         releases_by_version[version] = release
 
-            # TODO: Validate the schema of the history input file.
-
             self.releases = list(sorted(releases_by_version.values(), key=lambda release: release.version, reverse=True))
 
     def format_changes(self, skip_unreleased=False):

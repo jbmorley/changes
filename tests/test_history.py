@@ -46,6 +46,7 @@ class HistoryTestCase(unittest.TestCase):
     # TODO: Test the augmentation/merge operation
     # TODO: Object level tests for the imported history (perhaps when it's a separate method?)
     # TODO: Single command for release notes
+    # TODO: Validate the schema of the history input file.
 
     def test_override(self):
         with Repository() as repository:
