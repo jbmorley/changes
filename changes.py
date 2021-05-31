@@ -313,12 +313,8 @@ def resolve_scope(options):
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
 def command_version(options):
-    history = History(scope=resolve_scope(options))
-    releases = history.releases
-    release = releases[0]
-    if options.released:
-        release = next(release for release in releases if release.is_released)
-    print(release.version)
+    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
+    print(history.releases[0].version)
 
 
 @cli.command("release", help="tag the commit as a new release", arguments=[
@@ -399,7 +395,6 @@ def command_release(options):
 ])
 def command_notes(options):
     history = History(scope=resolve_scope(options), skip_unreleased=options.released)
-    # TODO: Ensure released works for all changes
     if options.all:
         print(history.format_changes(), end="")
     else:
