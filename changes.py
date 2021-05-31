@@ -260,26 +260,34 @@ class History(object):
             releases_by_version = {release.version: release for release in releases}
 
             if self.history is not None:
-                with open(self.history) as fh:
-                    override = yaml.load(fh, Loader=yaml.SafeLoader)
-                for version_string, changes in override.items():
-                    messages = [parse_message(change) for change in changes]
-                    commits = [Change(message=message) for message in messages]
-                    commits.reverse()
-                    version = Version.from_string(version_string, self.scope)
-                    release = Release(version, commits, is_released=True)
+                for version, release in load_history(path=self.history, scope=self.scope).items():
                     try:
                         releases_by_version[version].merge(release)
                     except KeyError:
                         releases_by_version[version] = release
 
-            self.releases = list(sorted(releases_by_version.values(), key=lambda release: release.version, reverse=True))
+            self.releases = list(sorted(releases_by_version.values(),
+                                        key=lambda release: release.version, reverse=True))
 
     def format_changes(self, skip_unreleased=False):
         releases = list(self.releases)
         if skip_unreleased:
             releases = [release for release in releases if release.is_released]
         return format_releases(releases)
+
+
+def load_history(path, scope=None):
+    history = {}
+    with open(path) as fh:
+        override = yaml.load(fh, Loader=yaml.SafeLoader)
+    for version_string, changes in override.items():
+        messages = [parse_message(change) for change in changes]
+        commits = [Change(message=message) for message in messages]
+        commits.reverse()
+        version = Version.from_string(version_string, scope)
+        release = Release(version, commits, is_released=True)
+        history[version] = release
+    return history
 
 
 def run(command, dry_run=False):
