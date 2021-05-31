@@ -257,8 +257,6 @@ class History(object):
             if len(releases) > 1 and releases[0].is_empty:
                 releases.pop(0)
 
-            # self.releases = releases
-
             releases_by_version = {release.version: release for release in releases}
 
             # TODO: Merge these and test the merge operation.
