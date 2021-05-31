@@ -167,7 +167,7 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_version(), "2.0.0")
 
-    def test_released_version_raw_output(self):
+    def test_version_released_raw_output(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -175,15 +175,15 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes(["version", "--released"]), "1.6.12\n")
 
-    def test_released_version_no_tag_fails(self):
+    def test_version_released_no_tag_fails(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
             ])
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes(["released-version"])
+                repository.changes(["version", "--released"])
 
-    def test_released_version(self):
+    def test_version_released(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -267,6 +267,35 @@ class CLITestCase(unittest.TestCase):
 """**Changes**
 
 - More Shiny
+""")
+
+    def test_current_notes_released(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.0.0")
+            ])
+            self.assertEqual(repository.changes_notes(), "")
+            repository.perform([
+                EmptyCommit("fix: Doesn't crash"),
+                EmptyCommit("fix: Works"),
+            ])
+            self.assertEqual(repository.changes_notes(released=True), "")
+            repository.changes_release()
+            self.assertEqual(repository.changes_notes(released=True),
+"""**Fixes**
+
+- Doesn't crash
+- Works
+""")
+            repository.perform([
+                EmptyCommit("feat: More Shiny"),
+            ])
+            self.assertEqual(repository.changes_notes(released=True),
+"""**Fixes**
+
+- Doesn't crash
+- Works
 """)
 
     def test_all_changes(self):

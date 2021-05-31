@@ -146,8 +146,9 @@ class Release(object):
 
 class History(object):
 
-    def __init__(self, scope=None):
+    def __init__(self, scope=None, skip_unreleased=False):
         self.scope = scope
+        self.skip_unreleased = skip_unreleased
         self._load()
 
     def _load(self):
@@ -173,13 +174,13 @@ class History(object):
         if len(releases) > 1 and releases[0].is_empty:
             releases.pop(0)
 
-        self.releases = releases
+        if self.skip_unreleased:
+            self.releases = [release for release in releases if release.is_released]
+        else:
+            self.releases = releases
 
-    def format_changes(self, skip_unreleased=False):
-        releases = list(self.releases)
-        if skip_unreleased and not releases[0].is_released:
-            releases.pop(0)
-        return format_releases(releases)
+    def format_changes(self):
+        return format_releases(self.releases)
 
 
 def run(command, dry_run=False):
@@ -397,10 +398,10 @@ def command_release(options):
     cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
 ])
 def command_notes(options):
-    history = History(scope=resolve_scope(options))
+    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
     # TODO: Ensure released works for all changes
     if options.all:
-        print(history.format_changes(skip_unreleased=options.released), end="")
+        print(history.format_changes(), end="")
     else:
         print(format_changes(history.releases[0].changes), end="")
 
