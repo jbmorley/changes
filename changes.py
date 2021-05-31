@@ -320,21 +320,12 @@ def command_version(options):
     print(release.version)
 
 
-@cli.command("current-notes", help="formatted output of all unreleased changes, or changes in the released version if there are no unreleased changes", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_current_notes(options):
-    history = History(scope=resolve_scope(options))
-    releases = history.releases
-    print(format_changes(releases[0].changes), end="")
-
-
-@cli.command("release", help="a", arguments=[
+@cli.command("release", help="tag the commit as a new release", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
-    cli.Argument("--command", help="command to run to perform the release"),
+    cli.Argument("--command", help="additional command to run to perform during the release; if the command fails, the release will be rolled back"),
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
-    cli.Argument("--dry-run", action="store_true", default=False, help="just log the operations to be performed"),
+    cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
 ])
 def command_release(options):
     history = History(scope=resolve_scope(options))
@@ -400,21 +391,19 @@ def command_release(options):
     logging.info("Done.")
 
 
-@cli.command("all-changes", help="output changes for all versions", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions")
+@cli.command("notes", help="output the release notes", arguments=[
+    cli.Argument("--scope", help="filter the release notes to the given scope"),
+    cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
+    cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
 ])
-def command_all_changes(options):
+def command_notes(options):
     history = History(scope=resolve_scope(options))
-    print(history.format_changes(skip_unreleased=options.skip_unreleased), end="")
+    # TODO: Ensure released works for all changes
+    if options.all:
+        print(history.format_changes(skip_unreleased=options.released), end="")
+    else:
+        print(format_changes(history.releases[0].changes), end="")
 
-
-@cli.command("release-notes", help="output changes for all released versions", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-])
-def command_release_notes(options):
-    history = History(scope=resolve_scope(options))
-    print(history.format_changes(skip_unreleased=True), end="")
 
 DESCRIPTION = """
 
