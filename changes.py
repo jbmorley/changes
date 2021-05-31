@@ -426,9 +426,6 @@ def command_version(options):
     print(history.releases[0].version)
 
 
-
-
-
 @cli.command("release", help="tag the commit as a new release", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
