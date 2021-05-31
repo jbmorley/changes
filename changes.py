@@ -273,13 +273,11 @@ class History(object):
                     commits = [Change(message=message) for message in messages]
                     commits.reverse()
                     version = Version.from_string(version_string, self.scope)
-                    release = Release(version, commits, has_tag=True)
+                    release = Release(version, commits, is_released=True)
                     try:
                         releases_by_version[version].merge(release)
                     except KeyError:
                         releases_by_version[version] = release
-                    # self.releases.append(Release(version, commits, has_tag=True))
-            # exit()
 
             # TODO: Validate the schema of the history input file.
 
