@@ -512,9 +512,6 @@ def command_notes(options):
         print(format_changes(history.releases[0].changes), end="")
 
 
-
-
-
 DESCRIPTION = """
 
 Lightweight and (hopefully) unopinionated tool for managing Semantic Versioning using Conventional Commits.
