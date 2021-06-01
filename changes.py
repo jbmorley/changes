@@ -37,6 +37,10 @@ import yaml
 import cli
 
 
+CHANGES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIRECTORY = os.path.join(CHANGES_DIRECTORY, "templates")
+
+
 class Type(enum.Enum):
     CI = "ci"
     DOCUMENTATION = "docs"
@@ -418,39 +422,18 @@ def group_changes(changes):
     return results
 
 
-# TODO: Common import for the title?
 # TODO: Ensure we test unreleased with both change types
-# TODO: Move these into files.
+# TODO: Test the injected notes for the release process.
 
 
-ALL_NOTES_TEMPLATE = """
-{%- for release in releases -%}
-# {{ release.version }}{% if not release.is_released %} (Unreleased){% endif %}
-{% for section in release.sections %}
-**{{ section.title }}**
-
-{% for change in section.changes | reverse -%}
-- {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
-{% endfor %}{% endfor %}
-{% endfor %}
-"""
-
-
-NOTES_TEMPLATE = """
-{%- for release in releases -%}
-{% for section in release.sections -%}
-**{{ section.title }}**
-
-{% for change in section.changes | reverse -%}
-- {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
-{% endfor %}
-{% endfor %}
-{% endfor %}
-"""
+ALL_NOTES_TEMPLATE = "multiple.markdown"
+NOTES_TEMPLATE = "single.markdown"
 
 
 def format_changes(releases, template):
-    return jinja2.Template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
+    loader = jinja2.FileSystemLoader(TEMPLATES_DIRECTORY)
+    environment = jinja2.Environment(loader=loader)
+    return environment.get_template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
 
 
 def resolve_scope(options):
