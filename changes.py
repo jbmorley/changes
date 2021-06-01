@@ -40,6 +40,9 @@ import cli
 CHANGES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIRECTORY = os.path.join(CHANGES_DIRECTORY, "templates")
 
+MULTIPLE_RELEASE_TEMPLATE = "multiple.markdown"
+SINGLE_RELEASE_TEMPLATE = "single.markdown"
+
 
 class Type(enum.Enum):
     CI = "ci"
@@ -426,10 +429,6 @@ def group_changes(changes):
 # TODO: Test the injected notes for the release process.
 
 
-ALL_NOTES_TEMPLATE = "multiple.markdown"
-NOTES_TEMPLATE = "single.markdown"
-
-
 def format_changes(releases, template):
     loader = jinja2.FileSystemLoader(TEMPLATES_DIRECTORY)
     environment = jinja2.Environment(loader=loader)
@@ -490,7 +489,7 @@ def command_release(options):
         logging.info("Running command...")
         success = True
 
-        notes = format_changes([releases[0]], NOTES_TEMPLATE)
+        notes = format_changes([releases[0]], SINGLE_RELEASE_TEMPLATE)
 
         # Create a temporary directory containing the notes.
         with tempfile.NamedTemporaryFile() as notes_file:
@@ -531,13 +530,20 @@ def command_release(options):
     cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
     cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
     cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
+    cli.Argument("--template", help="custom Jinja2 template")
 ])
 def command_notes(options):
     history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options), skip_unreleased=options.released)
-    if options.all:
-        print(format_changes(history.releases, ALL_NOTES_TEMPLATE), end="")
+
+    if options.template is not None:
+        template = os.path.abspath(options.template)
     else:
-        print(format_changes([history.releases[0]], NOTES_TEMPLATE), end="")
+        template = MULTIPLE_RELEASE_TEMPLATE if options.all else SINGLE_RELEASE_TEMPLATE
+
+    if options.all:
+        print(format_changes(history.releases, template), end="")
+    else:
+        print(format_changes([history.releases[0]], template), end="")
 
 
 DESCRIPTION = """
