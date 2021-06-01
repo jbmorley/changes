@@ -46,5 +46,5 @@ do
 done
 
 pushd "$TESTS_DIRECTORY" > /dev/null
-python3 -m unittest discover --verbose
+PIPENV_PIPFILE="${ROOT_DIRECTORY}/Pipfile" pipenv run python3 -m unittest discover --verbose
 popd > /dev/null

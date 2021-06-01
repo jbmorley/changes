@@ -28,8 +28,6 @@ import common
 
 from common import Commit, EmptyCommit, Release, Repository, Tag
 
-common.configure_path()
-
 
 class CLITestCase(unittest.TestCase):
 
@@ -401,6 +399,62 @@ class CLITestCase(unittest.TestCase):
 **Changes**
 
 - Initial commit
+""")
+
+    def test_release_notes_additional_history_preserves_ordering(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+            ])
+            repository.write_yaml("history.yaml", {
+                "2.0.0": [
+                    "feat: Baz",
+                    "fix: Foo",
+                    "feat: Bar",
+                ]
+            })
+            self.assertEqual(repository.changes_notes(released=True, all=True, history="history.yaml"),
+"""# 2.0.0
+
+**Changes**
+
+- Baz
+- Bar
+
+**Fixes**
+
+- Foo
+""")
+
+    def test_release_notes_additional_history_merges_cahnges(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.10.1"),
+                EmptyCommit("feat: New and exciting"), # TODO: Why didn't the breaking change work??
+            ])
+            repository.write_yaml("history.yaml", {
+                "1.11.0": [
+                    "feat: Baz",
+                    "fix: Foo",
+                    "feat: Bar",
+                ]
+            })
+            self.assertEqual(repository.changes_notes(all=True, history="history.yaml"),
+"""# 1.11.0 (Unreleased)
+
+**Changes**
+
+- Baz
+- Bar
+- New and exciting
+
+**Fixes**
+
+- Foo
+
+# 1.10.1
+
 """)
 
 

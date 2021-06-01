@@ -31,11 +31,9 @@ import subprocess
 import sys
 import tempfile
 
+import yaml
+
 import cli
-
-
-verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
-logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
 
 
 class Type(enum.Enum):
@@ -62,6 +60,20 @@ TYPE_TO_SECTION = {
     Type.FIX: "Fixes",
     Type.UNKNOWN: "Ignore",
 }
+
+
+class Chdir(object):
+
+    def __init__(self, path):
+        self.path = os.path.abspath(path)
+
+    def __enter__(self):
+        self.pwd = os.getcwd()
+        os.chdir(self.path)
+        return self.path
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.chdir(self.pwd)
 
 
 class Version(object):
@@ -98,12 +110,57 @@ class Version(object):
     def __str__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
 
+    def __eq__(self, other):
+        if self.major != other.major:
+            return False
+        if self.minor != other.minor:
+            return False
+        if self.patch != other.patch:
+            return False
+        return True
 
-class Commit(object):
+    def __lt__(self, other):
+        if self == other:
+            return False
+        if self.major > other.major:
+            return False
+        if self.major < other.major:
+            return True
+        if self.minor > other.minor:
+            return False
+        if self.minor < other.minor:
+            return True
+        if self.patch > other.patch:
+            return False
+        return True
+
+    def __hash__(self):
+        return str(self).__hash__()
+
+    @classmethod
+    def from_string(self, string, strip_scope=None):
+        return parse_version(string, scope=strip_scope)
+
+
+class Change(object):
+
+    def __init__(self, message):
+        self.message = message
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.message == other.message
+
+    def __str__(self):
+        return str(self.message)
+
+
+class Commit(Change):
 
     def __init__(self, sha, message, tags, version):
+        super().__init__(message)
         self.sha = sha
-        self.message = message
         self.tags = tags
         self.version = version
 
@@ -116,13 +173,29 @@ class Message(object):
         self.breaking_change = breaking_change
         self.description = description
 
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        if self.type != other.type:
+            return False
+        if self.scope != other.scope:
+            return False
+        if self.breaking_change != other.breaking_change:
+            return False
+        if self.description != other.description:
+            return False
+        return True
+
+    def __str__(self):
+        return self.description
+
 
 class Release(object):
 
-    def __init__(self, version, changes):
+    def __init__(self, version, changes, is_released=False):
         self.version = version
         self.changes = changes
-        self.is_released = False
+        self.is_released = is_released
 
     def set_previous_version(self, previous_version):
         """Recomputes the current version based on the previous version by applying the changes in order."""
@@ -143,44 +216,83 @@ class Release(object):
                 return False
         return True
 
+    def merge(self, release):
+        self.changes.extend(release.changes)
+
 
 class History(object):
 
-    def __init__(self, scope=None, skip_unreleased=False):
+    def __init__(self, path, scope=None, history=None, skip_unreleased=False):
+        self.path = os.path.abspath(path)
         self.scope = scope
         self.skip_unreleased = skip_unreleased
+        self.history = os.path.abspath(history) if history is not None else None
         self._load()
 
     def _load(self):
+        with Chdir(self.path):
 
-        # Get all the changes on the main branch.
-        all_changes = get_commits(scope=self.scope)
+            # Get all the changes on the current branch.
+            all_changes = get_commits(scope=self.scope)
 
-        # Group the changes by release.
-        releases = []
-        releases.append(Release(None, []))
-        for change in all_changes:
-            if change.version is not None:
-                release = Release(change.version, [])
-                release.is_released = True
-                releases.append(release)
-            releases[-1].changes.append(change)
+            # Group the changes by release.
+            releases = []
+            releases.append(Release(None, []))
+            for change in all_changes:
+                if change.version is not None:
+                    release = Release(change.version, [], is_released=True)
+                    releases.append(release)
+                releases[-1].changes.append(change)
 
-        # Fix-up the version number for any un-released current release.
-        if releases[0].version is None:
-            releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
+            # Fix-up the version number for any un-released current release.
+            if releases[0].version is None:
+                releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
 
-        # Remove the empty head release if there's already an active release.
-        if len(releases) > 1 and releases[0].is_empty:
-            releases.pop(0)
+            # Remove the empty head release if there's already an active release.
+            if len(releases) > 1 and releases[0].is_empty:
+                releases.pop(0)
 
-        if self.skip_unreleased:
-            self.releases = [release for release in releases if release.is_released]
-        else:
-            self.releases = releases
+            releases_by_version = {release.version: release for release in releases}
+
+            if self.history is not None:
+                for version, release in load_history(path=self.history, scope=self.scope).items():
+                    try:
+                        releases_by_version[version].merge(release)
+                    except KeyError:
+                        releases_by_version[version] = release
+
+            releases = list(sorted(releases_by_version.values(),
+                                   key=lambda release: release.version, reverse=True))
+
+            if self.skip_unreleased:
+                self.releases = [release for release in releases if release.is_released]
+            else:
+                self.releases = releases
 
     def format_changes(self):
         return format_releases(self.releases)
+
+
+def load_history(path, scope=None):
+    history = {}
+    with open(path) as fh:
+        contents = yaml.load(fh, Loader=yaml.SafeLoader)
+    # Check the format.
+    if not isinstance(contents, dict):
+        raise ValueError("Invalid configuration")
+    for version_string, changes in contents.items():
+        try:
+            version = Version.from_string(version_string, scope)
+            if not isinstance(version_string, str) or not isinstance(changes, list):
+                raise ValueError("Invalid configuration")
+            messages = [parse_message(change) for change in changes]
+            commits = [Change(message=message) for message in messages]
+            commits.reverse()
+            release = Release(version, commits, is_released=True)
+            history[version] = release
+        except UnknownScope:
+            logging.warning("Ignoring version '%s'...", version_string)
+    return history
 
 
 def run(command, dry_run=False):
@@ -200,17 +312,21 @@ def get_tags(sha):
         return []
 
 
+class UnknownScope(ValueError):
+    pass
+
+
 def parse_version(tag, scope=None):
-    prefix = ""
-    if scope is not None:
-        prefix = scope + "_"
-    sv_parser = re.compile(r"^" + prefix + r"(\d+).(\d+).(\d+)$")
+    sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)$")
     match = sv_parser.match(tag)
     if match:
-        return Version(major=int(match.group(1)),
-                       minor=int(match.group(2)),
-                       patch=int(match.group(3)))
-    raise ValueError("Not a version")
+        tag_scope = match.group(2)
+        if tag_scope != scope:
+            raise UnknownScope("'%s' contains unknown scope." % tag)
+        return Version(major=int(match.group(3)),
+                       minor=int(match.group(4)),
+                       patch=int(match.group(5)))
+    raise ValueError("'%s' is not a valid version." % tag)
 
 
 def version_from_tags(tags, scope=None):
@@ -237,7 +353,8 @@ def get_commits(scope=None):
         exit(1)
     for c in commits:
         sha, message = c.split(":", 1)
-        commit = Commit(sha, parse_message(message), get_tags(sha), version_from_tags(get_tags(sha), scope))
+        tags = get_tags(sha)
+        commit = Commit(sha, parse_message(message), tags, version_from_tags(tags, scope))
         results.append(commit)
     return results
 
@@ -313,7 +430,7 @@ def resolve_scope(options):
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
 ])
 def command_version(options):
-    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
+    history = History(path=os.getcwd(), scope=resolve_scope(options), skip_unreleased=options.released)
     print(history.releases[0].version)
 
 
@@ -325,7 +442,7 @@ def command_version(options):
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
 ])
 def command_release(options):
-    history = History(scope=resolve_scope(options))
+    history = History(path=os.getcwd(), scope=resolve_scope(options))
     releases = history.releases
     if releases[0].is_released or releases[0].is_empty:
         # There aren't any unreleased versions.
@@ -390,11 +507,13 @@ def command_release(options):
 
 @cli.command("notes", help="output the release notes", arguments=[
     cli.Argument("--scope", help="filter the release notes to the given scope"),
+    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
+    cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
     cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
     cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
 ])
 def command_notes(options):
-    history = History(scope=resolve_scope(options), skip_unreleased=options.released)
+    history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options), skip_unreleased=options.released)
     if options.all:
         print(history.format_changes(), end="")
     else:
@@ -416,6 +535,8 @@ You can find out more about Conventional Commits and Semantic Versioning at the 
 """
 
 def main():
+    verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
     parser = cli.CommandParser(description=DESCRIPTION, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:

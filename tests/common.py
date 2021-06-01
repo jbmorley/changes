@@ -25,6 +25,15 @@ import sys
 import tempfile
 import unittest
 
+import yaml
+
+TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
+
+sys.path.append(ROOT_DIRECTORY)
+
+from changes import Chdir
+
 
 debug = False
 try:
@@ -32,28 +41,6 @@ try:
 except KeyError:
     pass
 logging.basicConfig(level=logging.DEBUG if debug else logging.INFO, format="[%(levelname)s] %(message)s")
-
-
-TESTS_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
-
-
-def configure_path():
-    sys.path.append(ROOT_DIRECTORY)
-
-
-class Chdir(object):
-
-    def __init__(self, path):
-        self.path = os.path.abspath(path)
-
-    def __enter__(self):
-        self.pwd = os.getcwd()
-        os.chdir(self.path)
-        return self.path
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        os.chdir(self.pwd)
 
 
 class Commit(object):
@@ -115,6 +102,12 @@ class Repository(object):
                 raise
             return result.stdout.decode("utf-8")
 
+    def write_file(self, path, contents):
+        with open(os.path.join(self.path, path), "w") as fh:
+            fh.write(contents)
+
+    def write_yaml(self, path, contents):
+        self.write_file(path, yaml.dump(contents))
 
     def git(self, arguments):
         return self.run(["git"] + arguments)
@@ -170,19 +163,23 @@ class Repository(object):
             arguments.extend(["--released"])
         return self.changes(arguments).strip()
 
+
     def changes_release(self, scope=None):
         arguments = ["release"]
         if scope is not None:
             arguments.extend(["--scope", scope])
         return self.changes(arguments)
 
-    def changes_notes(self, released=False, all=False):
+    def changes_notes(self, released=False, all=False, history=None):
         arguments = ["notes"]
         if released:
             arguments.append("--released")
         if all:
             arguments.append("--all")
+        if history is not None:
+            arguments.extend(["--history", history])
         return self.changes(arguments)
+
 
     @property
     def path(self):
