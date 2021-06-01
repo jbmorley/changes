@@ -44,6 +44,12 @@ class Type(enum.Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class Sections(enum.Enum):
+    IGNORE = "IGNORE"
+    CHANGES = "CHANGES"
+    FIXES = "FIXES"
+
+
 OPERATIONS = {
     Type.CI: None,
     Type.DOCUMENTATION: None,
@@ -54,11 +60,17 @@ OPERATIONS = {
 
 
 TYPE_TO_SECTION = {
-    Type.CI: "Ignore",
-    Type.DOCUMENTATION: "Ignore",
-    Type.FEATURE: "Changes",
-    Type.FIX: "Fixes",
-    Type.UNKNOWN: "Ignore",
+    Type.CI: Sections.IGNORE,
+    Type.DOCUMENTATION: Sections.IGNORE,
+    Type.FEATURE: Sections.CHANGES,
+    Type.FIX: Sections.FIXES,
+    Type.UNKNOWN: Sections.IGNORE,
+}
+
+
+SECTION_TITLES = {
+    Sections.CHANGES: "Changes",
+    Sections.FIXES: "Fixes",
 }
 
 
@@ -220,6 +232,13 @@ class Release(object):
         self.changes.extend(release.changes)
 
 
+class Section(object):
+
+    def __init__(self, type, changes):
+        self.type = type
+        self.changes = changes
+
+
 class History(object):
 
     def __init__(self, path, scope=None, history=None, skip_unreleased=False):
@@ -377,10 +396,11 @@ def parse_message(message):
                    description=message.strip())
 
 
-def format_messages(messages, section):
+def format_section(section):
+    title = SECTION_TITLES[section.type]
     result = ""
-    result = result + f"**{section}**\n\n"
-    for message in reversed(messages):
+    result = result + f"**{title}**\n\n"
+    for message in reversed(section.changes):
         result = result + f"- {message.description}"
         if message.scope is not None:
             result = result + f" ({message.scope})"
@@ -388,17 +408,26 @@ def format_messages(messages, section):
     return result
 
 
-def format_changes(changes):
-    result = ""
-    sections = collections.defaultdict(list)
+def group_changes(changes):
+    sections = {}
     for commit in changes:
-        sections[TYPE_TO_SECTION[commit.message.type]].append(commit.message)
-    content = []
-    if "Changes" in sections:
-        content.append(format_messages(sections["Changes"], "Changes"))
-    if "Fixes" in sections:
-        content.append(format_messages(sections["Fixes"], "Fixes"))
-    return "\n".join(content)
+        section_type = TYPE_TO_SECTION[commit.message.type]
+        if section_type not in sections:
+            sections[section_type] = Section(type=section_type, changes=[])
+        section = sections[section_type]
+        section.changes.append(commit.message)
+    results = []
+    if Sections.CHANGES in sections:
+        results.append(sections[Sections.CHANGES])
+    if Sections.FIXES in sections:
+        results.append(sections[Sections.FIXES])
+    return results
+
+
+def format_changes(changes):
+    sections = group_changes(changes)
+    messages = [format_section(section) for section in sections]
+    return "\n".join(messages)
 
 
 def format_release(release):
