@@ -31,9 +31,17 @@ import subprocess
 import sys
 import tempfile
 
+import jinja2
 import yaml
 
 import cli
+
+
+CHANGES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIRECTORY = os.path.join(CHANGES_DIRECTORY, "templates")
+
+MULTIPLE_RELEASE_TEMPLATE = "multiple.markdown"
+SINGLE_RELEASE_TEMPLATE = "single.markdown"
 
 
 class Type(enum.Enum):
@@ -42,6 +50,12 @@ class Type(enum.Enum):
     FEATURE = "feat"
     FIX = "fix"
     UNKNOWN = "UNKNOWN"
+
+
+class Sections(enum.Enum):
+    IGNORE = "IGNORE"
+    CHANGES = "CHANGES"
+    FIXES = "FIXES"
 
 
 OPERATIONS = {
@@ -54,11 +68,17 @@ OPERATIONS = {
 
 
 TYPE_TO_SECTION = {
-    Type.CI: "Ignore",
-    Type.DOCUMENTATION: "Ignore",
-    Type.FEATURE: "Changes",
-    Type.FIX: "Fixes",
-    Type.UNKNOWN: "Ignore",
+    Type.CI: Sections.IGNORE,
+    Type.DOCUMENTATION: Sections.IGNORE,
+    Type.FEATURE: Sections.CHANGES,
+    Type.FIX: Sections.FIXES,
+    Type.UNKNOWN: Sections.IGNORE,
+}
+
+
+SECTION_TITLES = {
+    Sections.CHANGES: "Changes",
+    Sections.FIXES: "Fixes",
 }
 
 
@@ -219,6 +239,21 @@ class Release(object):
     def merge(self, release):
         self.changes.extend(release.changes)
 
+    @property
+    def sections(self):
+        return group_changes(self.changes)
+
+
+class Section(object):
+
+    def __init__(self, type, changes):
+        self.type = type
+        self.changes = changes
+
+    @property
+    def title(self):
+        return SECTION_TITLES[self.type]
+
 
 class History(object):
 
@@ -268,9 +303,6 @@ class History(object):
                 self.releases = [release for release in releases if release.is_released]
             else:
                 self.releases = releases
-
-    def format_changes(self):
-        return format_releases(self.releases)
 
 
 def load_history(path, scope=None):
@@ -377,43 +409,29 @@ def parse_message(message):
                    description=message.strip())
 
 
-def format_messages(messages, section):
-    result = ""
-    result = result + f"**{section}**\n\n"
-    for message in reversed(messages):
-        result = result + f"- {message.description}"
-        if message.scope is not None:
-            result = result + f" ({message.scope})"
-        result = result + "\n"
-    return result
-
-
-def format_changes(changes):
-    result = ""
-    sections = collections.defaultdict(list)
+def group_changes(changes):
+    sections = {}
     for commit in changes:
-        sections[TYPE_TO_SECTION[commit.message.type]].append(commit.message)
-    content = []
-    if "Changes" in sections:
-        content.append(format_messages(sections["Changes"], "Changes"))
-    if "Fixes" in sections:
-        content.append(format_messages(sections["Fixes"], "Fixes"))
-    return "\n".join(content)
+        section_type = TYPE_TO_SECTION[commit.message.type]
+        if section_type not in sections:
+            sections[section_type] = Section(type=section_type, changes=[])
+        section = sections[section_type]
+        section.changes.append(commit.message)
+    results = []
+    if Sections.CHANGES in sections:
+        results.append(sections[Sections.CHANGES])
+    if Sections.FIXES in sections:
+        results.append(sections[Sections.FIXES])
+    return results
 
 
-def format_release(release):
-    result = f"# {release.version}"
-    if not release.is_released:
-        result = result + " (Unreleased)"
-    result = result + "\n\n"
-    result = result + format_changes(release.changes)
-    return result
-
-
-def format_releases(releases):
-    content = [format_release(release) for release in releases]
-    return "\n".join(content)
-    return result
+def format_notes(releases, template):
+    loader = jinja2.ChoiceLoader([
+        AbsolutePathLoader(),
+        jinja2.FileSystemLoader(TEMPLATES_DIRECTORY),
+    ])
+    environment = jinja2.Environment(loader=loader)
+    return environment.get_template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
 
 
 def resolve_scope(options):
@@ -440,6 +458,7 @@ def command_version(options):
     cli.Argument("--command", help="additional command to run to perform during the release; if the command fails, the release will be rolled back"),
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
+    cli.Argument("--template", help="custom Jinja2 template"),
 ])
 def command_release(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
@@ -470,7 +489,11 @@ def command_release(options):
         logging.info("Running command...")
         success = True
 
-        notes = format_changes(releases[0].changes)
+        if options.template is not None:
+            template = os.path.abspath(options.template)
+        else:
+            template = SINGLE_RELEASE_TEMPLATE
+        notes = format_notes(releases=[releases[0]], template=template)
 
         # Create a temporary directory containing the notes.
         with tempfile.NamedTemporaryFile() as notes_file:
@@ -505,19 +528,41 @@ def command_release(options):
     logging.info("Done.")
 
 
+class AbsolutePathLoader(jinja2.BaseLoader):
+
+    def get_source(self, environment, template):
+        path = os.path.abspath(template)
+        if not os.path.exists(path):
+            raise jinja2.TemplateNotFound(path)
+        mtime = os.path.getmtime(path)
+        with open(path) as f:
+            source = f.read()
+        return source, path, lambda: mtime == os.path.getmtime(path)
+
+
 @cli.command("notes", help="output the release notes", arguments=[
     cli.Argument("--scope", help="filter the release notes to the given scope"),
     cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
     cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
     cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
     cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
+    cli.Argument("--template", help="custom Jinja2 template")
 ])
 def command_notes(options):
-    history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options), skip_unreleased=options.released)
-    if options.all:
-        print(history.format_changes(), end="")
+    history = History(path=os.getcwd(),
+                      history=options.history,
+                      scope=resolve_scope(options),
+                      skip_unreleased=options.released)
+
+    if options.template is not None:
+        template = os.path.abspath(options.template)
     else:
-        print(format_changes(history.releases[0].changes), end="")
+        template = MULTIPLE_RELEASE_TEMPLATE if options.all else SINGLE_RELEASE_TEMPLATE
+
+    if options.all:
+        print(format_notes(releases=history.releases, template=template), end="")
+    else:
+        print(format_notes(releases=[history.releases[0]], template=template), end="")
 
 
 DESCRIPTION = """
