@@ -235,6 +235,70 @@ class CLITestCase(unittest.TestCase):
             repository.changes_release(command="echo $CHANGES_TITLE >> output.txt")
             self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
 
+    def test_release_command_environment_tag(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(command="echo $CHANGES_TAG >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+
+    def test_release_command_environment_notes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"),
+"""**Changes**
+
+- New feature
+
+""")
+            repository.perform([
+                EmptyCommit("fix: Improved something"),
+            ])
+            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"),
+"""**Changes**
+
+- New feature
+
+**Fixes**
+
+- Improved something
+
+""")
+
+    def test_release_command_environment_notes_changes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt")
+            self.assertEqual(repository.read_file("output.txt"),
+"""**Changes**
+
+- New feature
+""")
+
+    def test_release_command_environment_notes_changes_and_fixes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+                EmptyCommit("fix: Improved something"),
+            ])
+            repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt")
+            self.assertEqual(repository.read_file("output.txt"),
+"""**Changes**
+
+- New feature
+
+**Fixes**
+
+- Improved something
+""")
+
     def test_current_notes(self):
         with Repository() as repository:
             repository.perform([
