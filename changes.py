@@ -532,7 +532,7 @@ class AbsolutePathLoader(jinja2.BaseLoader):
     def get_source(self, environment, template):
         path = os.path.abspath(template)
         if not os.path.exists(path):
-            raise TemplateNotFound(path)
+            raise jinja2.TemplateNotFound(path)
         mtime = os.path.getmtime(path)
         with open(path) as f:
             source = f.read()
