@@ -549,7 +549,10 @@ class AbsolutePathLoader(jinja2.BaseLoader):
     cli.Argument("--template", help="custom Jinja2 template")
 ])
 def command_notes(options):
-    history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options), skip_unreleased=options.released)
+    history = History(path=os.getcwd(),
+                      history=options.history,
+                      scope=resolve_scope(options),
+                      skip_unreleased=options.released)
 
     if options.template is not None:
         template = os.path.abspath(options.template)
