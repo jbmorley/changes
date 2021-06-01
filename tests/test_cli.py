@@ -401,7 +401,7 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
-    def test_release_notes_additional_history_preserves_ordering(self):
+    def test_notes_additional_history_preserves_ordering(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -426,12 +426,12 @@ class CLITestCase(unittest.TestCase):
 - Foo
 """)
 
-    def test_release_notes_additional_history_merges_cahnges(self):
+    def test_notes_additional_history_merges_changes(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
                 Tag("1.10.1"),
-                EmptyCommit("feat: New and exciting"), # TODO: Why didn't the breaking change work??
+                EmptyCommit("feat: New and exciting"),
             ])
             repository.write_yaml("history.yaml", {
                 "1.11.0": [
@@ -455,6 +455,46 @@ class CLITestCase(unittest.TestCase):
 
 # 1.10.1
 
+""")
+
+    def test_notes_additional_history_ignoring_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("macOS_1.0.0"),
+            ])
+            repository.write_yaml("history.yaml", {
+                "macOS_1.0.1": [
+                    "feat: Baz",
+                    "fix: Foo",
+                    "feat: Bar",
+                ],
+                "1.0.0": [
+                    "feat!: Initial release"
+                ]
+            })
+            self.assertEqual(repository.changes_notes(all=True, history="history.yaml", scope="macOS"),
+"""# 1.0.1
+
+**Changes**
+
+- Baz
+- Bar
+
+**Fixes**
+
+- Foo
+
+# 1.0.0
+
+""")
+
+            self.assertEqual(repository.changes_notes(all=True, released=True, history="history.yaml"),
+"""# 1.0.0
+
+**Changes**
+
+- Initial release
 """)
 
 

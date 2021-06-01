@@ -77,7 +77,6 @@ class HistoryTestCase(unittest.TestCase):
             with self.assertRaises(ValueError):
                 changes.load_history(os.path.join(repository.path, "history.yaml"))
 
-    # TODO: Command line test of the scope too!
     def test_scope_filtering(self):
         with Repository() as repository:
             repository.write_yaml("history.yaml", {
