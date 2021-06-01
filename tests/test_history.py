@@ -34,8 +34,6 @@ from common import EmptyCommit, Repository, Tag
 
 class HistoryTestCase(unittest.TestCase):
 
-    # TODO: Test the scope.
-
     def test_history_augmentation(self):
         with Repository() as repository:
             repository.perform([
@@ -78,6 +76,34 @@ class HistoryTestCase(unittest.TestCase):
             })
             with self.assertRaises(ValueError):
                 changes.load_history(os.path.join(repository.path, "history.yaml"))
+
+    # TODO: Command line test of the scope too!
+    def test_scope_filtering(self):
+        with Repository() as repository:
+            repository.write_yaml("history.yaml", {
+                "macOS_1.4.0": [
+                    "feat: Foo",
+                    "feat: Bar",
+                    "feat: Baz",
+                ],
+                "macOS_1.3.4": [
+                    "fix: Minor",
+                ],
+                "1.0.4": [
+                    "fix: Cheese",
+                ]
+            })
+
+            releases = changes.load_history(os.path.join(repository.path, "history.yaml"), scope="macOS")
+            self.assertEqual(len(releases), 2)
+            self.assertEqual(list(sorted(releases.keys())), [Version(1, 3, 4), Version(1, 4, 0)])
+
+            releases = changes.load_history(os.path.join(repository.path, "history.yaml"), scope=None)
+            self.assertEqual(len(releases), 1)
+            self.assertEqual(list(sorted(releases.keys())), [Version(1, 0, 4)])
+
+            releases = changes.load_history(os.path.join(repository.path, "history.yaml"), scope="cheese")
+            self.assertEqual(len(releases), 0)
 
 
 if __name__ == '__main__':

@@ -281,14 +281,17 @@ def load_history(path, scope=None):
     if not isinstance(contents, dict):
         raise ValueError("Invalid configuration")
     for version_string, changes in contents.items():
-        if not isinstance(version_string, str) or not isinstance(changes, list):
-            raise ValueError("Invalid configuration")
-        messages = [parse_message(change) for change in changes]
-        commits = [Change(message=message) for message in messages]
-        commits.reverse()
-        version = Version.from_string(version_string, scope)
-        release = Release(version, commits, is_released=True)
-        history[version] = release
+        try:
+            version = Version.from_string(version_string, scope)
+            if not isinstance(version_string, str) or not isinstance(changes, list):
+                raise ValueError("Invalid configuration")
+            messages = [parse_message(change) for change in changes]
+            commits = [Change(message=message) for message in messages]
+            commits.reverse()
+            release = Release(version, commits, is_released=True)
+            history[version] = release
+        except UnknownScope:
+            logging.warning("Ignoring version '%s'...", version_string)
     return history
 
 
@@ -309,17 +312,21 @@ def get_tags(sha):
         return []
 
 
+class UnknownScope(ValueError):
+    pass
+
+
 def parse_version(tag, scope=None):
-    prefix = ""
-    if scope is not None:
-        prefix = scope + "_"
-    sv_parser = re.compile(r"^" + prefix + r"(\d+).(\d+).(\d+)$")
+    sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)$")
     match = sv_parser.match(tag)
     if match:
-        return Version(major=int(match.group(1)),
-                       minor=int(match.group(2)),
-                       patch=int(match.group(3)))
-    raise ValueError("Not a version")
+        tag_scope = match.group(2)
+        if tag_scope != scope:
+            raise UnknownScope("'%s' contains unknown scope." % tag)
+        return Version(major=int(match.group(3)),
+                       minor=int(match.group(4)),
+                       patch=int(match.group(5)))
+    raise ValueError("'%s' is not a valid version." % tag)
 
 
 def version_from_tags(tags, scope=None):
