@@ -458,6 +458,7 @@ def command_version(options):
     cli.Argument("--command", help="additional command to run to perform during the release; if the command fails, the release will be rolled back"),
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
+    cli.Argument("--template", help="custom Jinja2 template"),
 ])
 def command_release(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
@@ -488,7 +489,11 @@ def command_release(options):
         logging.info("Running command...")
         success = True
 
-        notes = format_notes(releases=[releases[0]], template=SINGLE_RELEASE_TEMPLATE)
+        if options.template is not None:
+            template = os.path.abspath(options.template)
+        else:
+            template = SINGLE_RELEASE_TEMPLATE
+        notes = format_notes(releases=[releases[0]], template=template)
 
         # Create a temporary directory containing the notes.
         with tempfile.NamedTemporaryFile() as notes_file:

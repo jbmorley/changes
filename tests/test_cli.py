@@ -248,17 +248,16 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            repository.changes_release(command="echo -n \"$CHANGES_NOTES\" >> output.txt")
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
 - New feature
-
 """)
             repository.perform([
                 EmptyCommit("fix: Improved something"),
             ])
-            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            repository.changes_release(command="echo -n \"$CHANGES_NOTES\" >> output.txt")
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
@@ -267,7 +266,6 @@ class CLITestCase(unittest.TestCase):
 **Fixes**
 
 - Improved something
-
 """)
 
     def test_release_command_environment_notes_changes(self):
@@ -298,6 +296,16 @@ class CLITestCase(unittest.TestCase):
 
 - Improved something
 """)
+
+    def test_release_command_environment_notes_template(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+                EmptyCommit("fix: Improved something"),
+            ])
+            repository.write_file("template.txt", "{{ releases | length }}")
+            repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt", template="template.txt")
+            self.assertEqual(repository.read_file("output.txt"), "1\n")
 
     def test_current_notes(self):
         with Repository() as repository:

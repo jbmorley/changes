@@ -167,13 +167,14 @@ class Repository(object):
             arguments.extend(["--released"])
         return self.changes(arguments).strip()
 
-
-    def changes_release(self, scope=None, command=None):
+    def changes_release(self, scope=None, command=None, template=None):
         arguments = ["release"]
         if scope is not None:
             arguments.extend(["--scope", scope])
         if command is not None:
             arguments.extend(["--command", command])
+        if template is not None:
+            arguments.extend(["--template", template])
         return self.changes(arguments)
 
     def changes_notes(self, released=False, all=False, history=None, scope=None):
