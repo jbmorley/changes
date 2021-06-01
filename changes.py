@@ -425,10 +425,6 @@ def group_changes(changes):
     return results
 
 
-# TODO: Ensure we test unreleased with both change types
-# TODO: Test the injected notes for the release process.
-
-
 def format_notes(releases, template):
     loader = jinja2.ChoiceLoader([
         AbsolutePathLoader(),
