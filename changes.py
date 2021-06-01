@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 
+import jinja2
 import yaml
 
 import cli
@@ -231,6 +232,10 @@ class Release(object):
     def merge(self, release):
         self.changes.extend(release.changes)
 
+    @property
+    def sections(self):
+        return group_changes(self.changes)
+
 
 class Section(object):
 
@@ -287,9 +292,6 @@ class History(object):
                 self.releases = [release for release in releases if release.is_released]
             else:
                 self.releases = releases
-
-    def format_changes(self):
-        return format_releases(self.releases)
 
 
 def load_history(path, scope=None):
@@ -396,18 +398,6 @@ def parse_message(message):
                    description=message.strip())
 
 
-def format_section(section):
-    title = SECTION_TITLES[section.type]
-    result = ""
-    result = result + f"**{title}**\n\n"
-    for message in reversed(section.changes):
-        result = result + f"- {message.description}"
-        if message.scope is not None:
-            result = result + f" ({message.scope})"
-        result = result + "\n"
-    return result
-
-
 def group_changes(changes):
     sections = {}
     for commit in changes:
@@ -424,25 +414,44 @@ def group_changes(changes):
     return results
 
 
-def format_changes(changes):
-    sections = group_changes(changes)
-    messages = [format_section(section) for section in sections]
-    return "\n".join(messages)
+# TODO: Common import for the title?
+# TODO: Ensure we test unreleased with both change types
+
+ALL_NOTES_TEMPLATE = """
+{%- macro title(section) -%}
+{%- if section.type == Sections.CHANGES -%}Changes{%- elif section.type == Sections.FIXES -%}Fixes{%- endif -%}
+{%- endmacro -%}
+
+{% for release in releases -%}
+# {{ release.version }}{% if not release.is_released %} (Unreleased){% endif %}
+{% for section in release.sections %}
+**{{ title(section) }}**
+
+{% for change in section.changes | reverse -%}
+- {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
+{% endfor %}{% endfor %}
+{% endfor %}
+"""
+
+NOTES_TEMPLATE = """
+{%- macro title(section) -%}
+{%- if section.type == Sections.CHANGES -%}Changes{%- elif section.type == Sections.FIXES -%}Fixes{%- endif -%}
+{%- endmacro -%}
+
+{% for release in releases -%}
+{% for section in release.sections -%}
+**{{ title(section) }}**
+
+{% for change in section.changes | reverse -%}
+- {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+"""
 
 
-def format_release(release):
-    result = f"# {release.version}"
-    if not release.is_released:
-        result = result + " (Unreleased)"
-    result = result + "\n\n"
-    result = result + format_changes(release.changes)
-    return result
-
-
-def format_releases(releases):
-    content = [format_release(release) for release in releases]
-    return "\n".join(content)
-    return result
+def format_changes(releases, template):
+    return jinja2.Template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
 
 
 def resolve_scope(options):
@@ -499,7 +508,7 @@ def command_release(options):
         logging.info("Running command...")
         success = True
 
-        notes = format_changes(releases[0].changes)
+        notes = format_changes([releases[0]], NOTES_TEMPLATE)
 
         # Create a temporary directory containing the notes.
         with tempfile.NamedTemporaryFile() as notes_file:
@@ -544,9 +553,9 @@ def command_release(options):
 def command_notes(options):
     history = History(path=os.getcwd(), history=options.history, scope=resolve_scope(options), skip_unreleased=options.released)
     if options.all:
-        print(history.format_changes(), end="")
+        print(format_changes(history.releases, ALL_NOTES_TEMPLATE), end="")
     else:
-        print(format_changes(history.releases[0].changes), end="")
+        print(format_changes([history.releases[0]], NOTES_TEMPLATE), end="")
 
 
 DESCRIPTION = """

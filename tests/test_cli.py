@@ -223,7 +223,7 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit"),
                 Tag("1.0.0")
             ])
-            self.assertEqual(repository.changes_notes(), "")
+            self.assertEqual(repository.changes_notes(), "\n")
             repository.perform([
                 EmptyCommit("fix: Doesn't crash"),
                 EmptyCommit("fix: Works"),
@@ -273,12 +273,12 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit"),
                 Tag("1.0.0")
             ])
-            self.assertEqual(repository.changes_notes(), "")
+            self.assertEqual(repository.changes_notes(), "\n")
             repository.perform([
                 EmptyCommit("fix: Doesn't crash"),
                 EmptyCommit("fix: Works"),
             ])
-            self.assertEqual(repository.changes_notes(released=True), "")
+            self.assertEqual(repository.changes_notes(released=True), "\n")
             repository.changes_release()
             self.assertEqual(repository.changes_notes(released=True),
 """**Fixes**
@@ -454,7 +454,6 @@ class CLITestCase(unittest.TestCase):
 - Foo
 
 # 1.10.1
-
 """)
 
     def test_notes_additional_history_ignoring_scope(self):
@@ -486,7 +485,6 @@ class CLITestCase(unittest.TestCase):
 - Foo
 
 # 1.0.0
-
 """)
 
             self.assertEqual(repository.changes_notes(all=True, released=True, history="history.yaml"),
