@@ -243,6 +243,10 @@ class Section(object):
         self.type = type
         self.changes = changes
 
+    @property
+    def title(self):
+        return SECTION_TITLES[self.type]
+
 
 class History(object):
 
@@ -416,16 +420,14 @@ def group_changes(changes):
 
 # TODO: Common import for the title?
 # TODO: Ensure we test unreleased with both change types
+# TODO: Move these into files.
+
 
 ALL_NOTES_TEMPLATE = """
-{%- macro title(section) -%}
-{%- if section.type == Sections.CHANGES -%}Changes{%- elif section.type == Sections.FIXES -%}Fixes{%- endif -%}
-{%- endmacro -%}
-
-{% for release in releases -%}
+{%- for release in releases -%}
 # {{ release.version }}{% if not release.is_released %} (Unreleased){% endif %}
 {% for section in release.sections %}
-**{{ title(section) }}**
+**{{ section.title }}**
 
 {% for change in section.changes | reverse -%}
 - {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
@@ -433,14 +435,11 @@ ALL_NOTES_TEMPLATE = """
 {% endfor %}
 """
 
-NOTES_TEMPLATE = """
-{%- macro title(section) -%}
-{%- if section.type == Sections.CHANGES -%}Changes{%- elif section.type == Sections.FIXES -%}Fixes{%- endif -%}
-{%- endmacro -%}
 
-{% for release in releases -%}
+NOTES_TEMPLATE = """
+{%- for release in releases -%}
 {% for section in release.sections -%}
-**{{ title(section) }}**
+**{{ section.title }}**
 
 {% for change in section.changes | reverse -%}
 - {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
