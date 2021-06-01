@@ -102,6 +102,10 @@ class Repository(object):
                 raise
             return result.stdout.decode("utf-8")
 
+    def read_file(self, path):
+        with open(os.path.join(self.path, path)) as fh:
+            return fh.read()
+
     def write_file(self, path, contents):
         with open(os.path.join(self.path, path), "w") as fh:
             fh.write(contents)
@@ -164,10 +168,12 @@ class Repository(object):
         return self.changes(arguments).strip()
 
 
-    def changes_release(self, scope=None):
+    def changes_release(self, scope=None, command=None):
         arguments = ["release"]
         if scope is not None:
             arguments.extend(["--scope", scope])
+        if command is not None:
+            arguments.extend(["--command", command])
         return self.changes(arguments)
 
     def changes_notes(self, released=False, all=False, history=None, scope=None):

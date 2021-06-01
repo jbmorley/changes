@@ -217,6 +217,24 @@ class CLITestCase(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 repository.changes_release()
 
+    # TODO: Add scope in here too.
+
+    def test_release_command_environment_version(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(command="echo $CHANGES_VERSION >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+
+    def test_release_command_environment_title(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(command="echo $CHANGES_TITLE >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+
     def test_current_notes(self):
         with Repository() as repository:
             repository.perform([
