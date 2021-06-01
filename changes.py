@@ -429,8 +429,11 @@ def group_changes(changes):
 # TODO: Test the injected notes for the release process.
 
 
-def format_changes(releases, template):
-    loader = jinja2.FileSystemLoader(TEMPLATES_DIRECTORY)
+def format_notes(releases, template):
+    loader = jinja2.ChoiceLoader([
+        AbsolutePathLoader(),
+        jinja2.FileSystemLoader(TEMPLATES_DIRECTORY),
+    ])
     environment = jinja2.Environment(loader=loader)
     return environment.get_template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
 
@@ -489,7 +492,7 @@ def command_release(options):
         logging.info("Running command...")
         success = True
 
-        notes = format_changes([releases[0]], SINGLE_RELEASE_TEMPLATE)
+        notes = format_notes(releases=[releases[0]], template=SINGLE_RELEASE_TEMPLATE)
 
         # Create a temporary directory containing the notes.
         with tempfile.NamedTemporaryFile() as notes_file:
@@ -524,6 +527,18 @@ def command_release(options):
     logging.info("Done.")
 
 
+class AbsolutePathLoader(jinja2.BaseLoader):
+
+    def get_source(self, environment, template):
+        path = os.path.abspath(template)
+        if not os.path.exists(path):
+            raise TemplateNotFound(path)
+        mtime = os.path.getmtime(path)
+        with open(path) as f:
+            source = f.read()
+        return source, path, lambda: mtime == os.path.getmtime(path)
+
+
 @cli.command("notes", help="output the release notes", arguments=[
     cli.Argument("--scope", help="filter the release notes to the given scope"),
     cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
@@ -541,9 +556,9 @@ def command_notes(options):
         template = MULTIPLE_RELEASE_TEMPLATE if options.all else SINGLE_RELEASE_TEMPLATE
 
     if options.all:
-        print(format_changes(history.releases, template), end="")
+        print(format_notes(releases=history.releases, template=template), end="")
     else:
-        print(format_changes([history.releases[0]], template), end="")
+        print(format_notes(releases=[history.releases[0]], template=template), end="")
 
 
 DESCRIPTION = """
