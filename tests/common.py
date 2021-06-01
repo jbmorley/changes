@@ -177,7 +177,7 @@ class Repository(object):
             arguments.extend(["--template", template])
         return self.changes(arguments)
 
-    def changes_notes(self, released=False, all=False, history=None, scope=None):
+    def changes_notes(self, released=False, all=False, history=None, scope=None, template=None):
         arguments = ["notes"]
         if released:
             arguments.append("--released")
@@ -187,6 +187,8 @@ class Repository(object):
             arguments.extend(["--history", history])
         if scope is not None:
             arguments.extend(["--scope", scope])
+        if template is not None:
+            arguments.extend(["--template", template])
         return self.changes(arguments)
 
 

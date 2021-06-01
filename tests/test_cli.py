@@ -493,6 +493,21 @@ class CLITestCase(unittest.TestCase):
 - Initial commit
 """)
 
+    def test_notes_template(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(),
+                EmptyCommit("fix: Fix something"),
+                EmptyCommit("fix: Fix something else"),
+                Release(),
+                EmptyCommit("fix!: Fix something breaking compatibility"),
+                Release(),
+                EmptyCommit("feat: Unreleased feature"),
+            ])
+            repository.write_file("template.txt", "{{ releases | length }}")
+            self.assertEqual(repository.changes_notes(all=True, released=True, template="template.txt"), "3\n")
+
     def test_notes_additional_history_preserves_ordering(self):
         with Repository() as repository:
             repository.perform([
