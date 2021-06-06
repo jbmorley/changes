@@ -94,6 +94,7 @@ class Repository(object):
             kwargs = {}
             if env is not None:
                 kwargs["env"] = env
+            logging.debug(command)
             result = subprocess.run(command, capture_output=True, **kwargs)
             try:
                 result.check_returncode()
@@ -106,12 +107,19 @@ class Repository(object):
         with open(os.path.join(self.path, path)) as fh:
             return fh.read()
 
-    def write_file(self, path, contents):
-        with open(os.path.join(self.path, path), "w") as fh:
+    def write_file(self, path, contents, mode=0):
+        file_path = os.path.join(self.path, path)
+        with open(file_path, "w") as fh:
             fh.write(contents)
+        if mode:
+            os.chmod(file_path, mode)
+        return file_path
+
+    def write_bash_script(self, path, contents):
+        return self.write_file(path, "#!/bin/bash\n" + contents, 0o744)
 
     def write_yaml(self, path, contents):
-        self.write_file(path, yaml.dump(contents))
+        return self.write_file(path, yaml.dump(contents))
 
     def git(self, arguments):
         return self.run(["git"] + arguments)
