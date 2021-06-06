@@ -92,6 +92,15 @@ class VersionTestCase(unittest.TestCase):
         self.assertNotEqual([str(version) for version in input_versions], output)
         self.assertEqual([str(version) for version in sorted(input_versions)], output)
 
+    def test_prerelease(self):
+        self.assertTrue(Version().is_prerelease)
+        self.assertTrue(Version(0, 1, 4).is_prerelease)
+        self.assertTrue(Version(0, 0, 1).is_prerelease)
+        self.assertTrue(Version(0, 20, 0).is_prerelease)
+        self.assertFalse(Version(1, 0, 0).is_prerelease)
+        self.assertFalse(Version(200, 1, 0).is_prerelease)
+        self.assertFalse(Version(2, 0, 10).is_prerelease)
+
 
 if __name__ == '__main__':
     unittest.main()

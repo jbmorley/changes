@@ -127,6 +127,12 @@ class Version(object):
         self.patch = self.patch + 1
         self.did_update_patch = True
 
+    @property
+    def is_prerelease(self):
+        if self.major == 0:
+            return True
+        return False
+
     def __str__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
 
@@ -504,6 +510,7 @@ def command_release(options):
             env = copy.deepcopy(os.environ)
             env['CHANGES_TITLE'] = title
             env['CHANGES_VERSION'] = str(version)
+            env['CHANGES_PRERELEASE'] = "true" if version.is_prerelease else "false"
             env['CHANGES_TAG'] = tag
             env['CHANGES_NOTES'] = notes
             env['CHANGES_NOTES_FILE'] = notes_file.name
@@ -512,14 +519,16 @@ def command_release(options):
             if options.dry_run:
                 logging.info(options.command)
             else:
-                result = subprocess.run(options.command, shell=True, capture_output=True, env=env)
+                result = subprocess.run(["/bin/sh", "-c", options.command], capture_output=True, env=env)
                 try:
                     result.check_returncode()
                     logging.info(result.stdout.decode("utf-8").strip())
                 except subprocess.CalledProcessError as e:
+                    logging.info(result.stdout.decode("utf-8").strip())
                     logging.error("Release command failed with error '%s'; reverting release.", e.stderr.decode("utf-8").strip())
                     run(["git", "tag", "-d", tag])
-                    run(["git", "push", "origin", f":{tag}"])
+                    if options.push:
+                        run(["git", "push", "origin", f":{tag}"])
                     success = False
 
         if not success:

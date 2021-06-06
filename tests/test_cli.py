@@ -182,6 +182,34 @@ class CLITestCase(unittest.TestCase):
 
     # TODO: Add scope in here too.
 
+    def test_release_command_default_interpreter(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            repository.changes_release(command="ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt")
+            self.assertEqual(repository.read_file("output.txt").strip(), "/bin/sh")
+
+    def test_release_command_bash_script(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            script_path = repository.write_file("script.sh", """#!/bin/bash
+ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
+""", mode=0o744)
+            repository.changes_release(command=script_path)
+            self.assertEqual(repository.read_file("output.txt").strip(), "/bin/bash")
+
+    def test_release_command_bash_script_correct_echo(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            script_path = repository.write_bash_script("script.sh", "echo -n Foo > output.txt")
+            repository.changes_release(command=script_path)
+            self.assertEqual(repository.read_file("output.txt"), "Foo")
+
     def test_release_command_environment_version(self):
         with Repository() as repository:
             repository.perform([
@@ -189,6 +217,27 @@ class CLITestCase(unittest.TestCase):
             ])
             repository.changes_release(command="echo $CHANGES_VERSION >> output.txt")
             self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+
+    def test_release_command_environment_prerelease(self):
+        with Repository() as repository:
+            repository.perform([EmptyCommit("feat: initial commit")])
+            script_path = repository.write_bash_script("script.sh", """
+if $CHANGES_PRERELEASE ; then
+echo -n "prerelease" > output.txt
+else
+echo -n "release" > output.txt
+fi
+""")
+            repository.changes_release(command=script_path)
+            self.assertEqual(repository.read_file("output.txt"), "prerelease")
+
+            repository.perform([EmptyCommit("fix: minor fix")])
+            repository.changes_release(command=script_path)
+            self.assertEqual(repository.read_file("output.txt"), "prerelease")
+
+            repository.perform([EmptyCommit("feat!: initial release")])
+            repository.changes_release(command=script_path)
+            self.assertEqual(repository.read_file("output.txt"), "release")
 
     def test_release_command_environment_title(self):
         with Repository() as repository:
