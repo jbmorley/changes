@@ -26,7 +26,11 @@ set -x
 set -u
 
 # Actually make the release.
-gh release create "$CHANGES_TAG" --prerelease --title "$CHANGES_TITLE" --notes-file "$CHANGES_NOTES_FILE"
+FLAGS=()
+if $CHANGES_PRERELEASE ; then
+    FLAGS+=("--prerelease")
+fi
+gh release create "$CHANGES_TAG" --title "$CHANGES_TITLE" --notes-file "$CHANGES_NOTES_FILE" "${FLAGS[@]}"
 
 # Upload the attachments.
 for attachment in "$@"
