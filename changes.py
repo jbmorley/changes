@@ -465,6 +465,7 @@ def command_version(options):
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
     cli.Argument("--template", help="custom Jinja2 template"),
+    cli.Argument("arguments", nargs="*", help="arguments to pass to the release command")
 ])
 def command_release(options):
     history = History(path=os.getcwd(), scope=resolve_scope(options))
@@ -501,10 +502,18 @@ def command_release(options):
             template = SINGLE_RELEASE_TEMPLATE
         notes = format_notes(releases=[releases[0]], template=template)
 
-        # Create a temporary directory containing the notes.
-        with tempfile.NamedTemporaryFile() as notes_file:
+        with tempfile.NamedTemporaryFile() as notes_file, tempfile.TemporaryDirectory() as temporary_directory:
+
+            # Create a temporary directory containing the notes.
             with open(notes_file.name, "w") as fh:
                 fh.write(notes)
+
+            # Create a temporary executable script to make it easy to forward arguments to the command.
+            temporary_script = os.path.join(temporary_directory, "script.sh")
+            with open(temporary_script, "w") as fh:
+                fh.write("#!/bin/sh\n")
+                fh.write(options.command)
+            os.chmod(temporary_script, 0o744)
 
             # Set up the environment.
             env = copy.deepcopy(os.environ)
@@ -519,7 +528,7 @@ def command_release(options):
             if options.dry_run:
                 logging.info(options.command)
             else:
-                result = subprocess.run(["/bin/sh", "-c", options.command], capture_output=True, env=env)
+                result = subprocess.run([temporary_script] + options.arguments, capture_output=True, env=env)
                 try:
                     result.check_returncode()
                     logging.info(result.stdout.decode("utf-8").strip())

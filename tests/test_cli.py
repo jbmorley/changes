@@ -321,6 +321,25 @@ fi
             repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt", template="template.txt")
             self.assertEqual(repository.read_file("output.txt"), "1\n")
 
+    def test_release_command_single_argument(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+                EmptyCommit("fix: Improved something"),
+            ])
+            repository.changes_release(command="echo \"$@\" > output.txt", arguments=["a"])
+            self.assertEqual(repository.read_file("output.txt"), "a\n")
+
+    def test_release_command_multiple_arguments(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+                EmptyCommit("fix: Improved something"),
+            ])
+            script_path = repository.write_bash_script("count.sh", """printf '%s\n' "$@" > output.txt""")
+            repository.changes_release(command=f'{script_path} "$@"', arguments=["a", "b", "c d e"])
+            self.assertEqual(repository.read_file("output.txt"), "a\nb\nc d e\n")
+
     def test_current_notes(self):
         with Repository() as repository:
             repository.perform([
