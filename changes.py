@@ -514,6 +514,7 @@ def command_release(options):
                 fh.write("#!/bin/sh\n")
                 fh.write(options.command)
             os.chmod(temporary_script, 0o744)
+            logging.debug("Running command '%s'", options.command)
 
             # Set up the environment.
             env = copy.deepcopy(os.environ)
