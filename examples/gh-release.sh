@@ -23,7 +23,6 @@
 set -e
 set -o pipefail
 set -x
-set -u
 
 # Actually make the release.
 FLAGS=()
