@@ -20,8 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIRECTORY="${SCRIPTS_DIRECTORY}/.."
-RELEASE_SCRIPT="${ROOT_DIRECTORY}/examples/gh-release.sh"
+set -e
+set -o pipefail
+set -x
+set -u
 
-changes release --skip-if-empty --push --command '"${RELEASE_SCRIPT}" "$@"'
+# Actually make the release.
+gh release create "$CHANGES_TAG" --prerelease --title "$CHANGES_TITLE" --notes-file "$CHANGES_NOTES_FILE"
+
+# Upload the attachments.
+for attachment in "$@"
+do
+    gh release upload "$CHANGES_TAG" "$attachment"
+done
