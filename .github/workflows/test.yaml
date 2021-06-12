@@ -53,4 +53,6 @@ jobs:
 
     - name: Create release
       run: scripts/release.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       if: ${{ github.ref == 'refs/heads/main' }}
