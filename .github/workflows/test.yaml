@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: Test
+name: Build
 
 on:
   pull_request:
@@ -32,7 +32,7 @@ on:
 jobs:
   test:
 
-    name: Test
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -50,3 +50,7 @@ jobs:
 
     - name: Run tests
       run: scripts/test.sh
+
+    - name: Create release
+      run: scripts/release.sh
+      if: ${{ github.ref == 'refs/heads/main' }}
