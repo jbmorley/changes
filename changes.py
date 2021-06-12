@@ -468,7 +468,8 @@ def command_version(options):
     cli.Argument("arguments", nargs="*", help="arguments to pass to the release command")
 ])
 def command_release(options):
-    history = History(path=os.getcwd(), scope=resolve_scope(options))
+    scope = resolve_scope(options)
+    history = History(path=os.getcwd(), scope=scope)
     releases = history.releases
     if releases[0].is_released or releases[0].is_empty:
         # There aren't any unreleased versions.
@@ -479,14 +480,14 @@ def command_release(options):
     version = releases[0].version
     logging.info("Releasing %s...", version)
     tag = str(version)
-    if options.scope is not None:
-        tag = f"{options.scope}_{tag}"
+    if scope is not None:
+        tag = f"{scope}_{tag}"
     logging.info("Creating tag '%s'...", tag)
     run(["git", "tag", tag], dry_run=options.dry_run)
 
     title = str(version)
-    if options.scope is not None:
-        title = f"{options.scope} {title}"
+    if scope is not None:
+        title = f"{scope} {title}"
 
     if options.push:
         logging.info("Pushing tag '%s'...", tag)

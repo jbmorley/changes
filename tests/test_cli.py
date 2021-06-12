@@ -255,6 +255,22 @@ fi
             repository.changes_release(command="echo $CHANGES_TAG >> output.txt")
             self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
 
+    def test_release_command_environment_tag_with_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes_release(scope="scope", command="echo $CHANGES_TAG >> output.txt")
+            self.assertEqual(repository.read_file("output.txt"), "scope_0.1.0\n")
+
+    def test_release_command_environment_tag_with_scope_legacy_argument(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            repository.changes(["--scope", "scope", "release", "--command", "echo $CHANGES_TAG >> output.txt"])
+            self.assertEqual(repository.read_file("output.txt"), "scope_0.1.0\n")
+
     def test_release_command_environment_notes(self):
         with Repository() as repository:
             repository.perform([
