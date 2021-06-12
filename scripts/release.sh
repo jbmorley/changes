@@ -1,5 +1,5 @@
 #!/bin/bash
-#
+
 # Copyright (c) 2021 InSeven Limited
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
