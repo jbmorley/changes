@@ -165,7 +165,10 @@ class Repository(object):
     def changes(self, arguments=[]):
         environment = dict(os.environ)
         environment["PATH"] = environment["PATH"] + ":" + ROOT_DIRECTORY
-        return self.run(["changes"] + arguments, env=environment)
+        if debug:
+            arguments = ["--verbose"] + arguments
+        command = ["changes"] + arguments
+        return self.run(command, env=environment)
 
     def changes_version(self, scope=None, released=False):
         arguments = ["version"]

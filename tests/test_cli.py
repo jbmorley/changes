@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import os
 import subprocess
 import unittest
@@ -238,8 +239,6 @@ class CLITestCase(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 repository.changes_release()
 
-    # TODO: Add scope in here too.
-
     def test_release_command_default_interpreter(self):
         with Repository() as repository:
             repository.perform([
@@ -268,6 +267,34 @@ ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
             repository.changes_release(command=script_path)
             self.assertEqual(repository.read_file("output.txt"), "Foo")
 
+    def test_release_command_and_exec_fails(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            script_path = repository.write_bash_script("script.sh", "echo -n Foo > output.txt")
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes(["release", "--command", script_path, "--exec", script_path])
+
+    def test_release_exec_relative_path(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            script_path = repository.write_bash_script("script.sh", "echo -n Foo > output.txt")
+            logging.debug("Script path '%s'", script_path)
+            repository.changes(["release", "--exec", "script.sh"])
+            self.assertEqual(repository.read_file("output.txt"), "Foo")
+
+    def test_release_exec_absolute_path(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            script_path = repository.write_bash_script("script.sh", "echo -n Foo > output.txt")
+            repository.changes(["release", "--exec", script_path])
+            self.assertEqual(repository.read_file("output.txt"), "Foo")
+
     def test_release_command_environment_version(self):
         with Repository() as repository:
             repository.perform([
@@ -275,6 +302,15 @@ ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
             ])
             repository.changes_release(command="echo $CHANGES_VERSION >> output.txt")
             self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+
+    def test_release_exec_environment_version(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            script_path = repository.write_bash_script("script.sh", "echo -n $CHANGES_VERSION > output.txt")
+            repository.changes(["release", "--exec", script_path])
+            self.assertEqual(repository.read_file("output.txt"), "0.1.0")
 
     def test_release_command_environment_prerelease(self):
         with Repository() as repository:
