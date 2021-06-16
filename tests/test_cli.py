@@ -158,6 +158,41 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes_version(released=True), "2.1.3")
 
+    def test_release_creates_tag(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            repository.changes_release()
+            self.assertEqual(repository.tag(), ["0.1.0"])
+
+    def test_release_creates_tag_with_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat(cheese): feature"),
+            ])
+            repository.changes_release(scope="cheese")
+            self.assertEqual(repository.tag(), ["cheese_0.1.0"])
+            repository.perform([
+                EmptyCommit("feat: another feature"),
+            ])
+            repository.changes_release()
+            self.assertEqual(sorted(repository.tag()), ["0.1.0", "cheese_0.1.0"])
+            repository.perform([
+                EmptyCommit("fix(cheese): fixed something"),
+            ])
+            repository.changes(["--scope", "cheese", "release"])
+            self.assertEqual(sorted(repository.tag()), ["0.1.0", "cheese_0.1.0", "cheese_0.2.0"])
+
+    def test_release_cleans_up_tag_on_failure(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes_release(command="exit 1")
+            self.assertEqual(repository.tag(), [])
+
     def test_release_fails_empty_repository(self):
         with Repository() as repository:
             with self.assertRaises(subprocess.CalledProcessError):
