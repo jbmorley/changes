@@ -461,13 +461,19 @@ def command_version(options):
 @cli.command("release", help="tag the commit as a new release", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
-    cli.Argument("--command", help="additional command to run to perform during the release; if the command fails, the release will be rolled back"),
+    cli.Argument("--command", help="additional command to run during the release; if the command fails, the release will be rolled back (cannot be used alongside --exec)"),
+    cli.Argument("--exec", help="executable to run to during the release; if the executable fails, the release will be rolled back (cannot be used alongside --command)"),
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
     cli.Argument("--template", help="custom Jinja2 template"),
     cli.Argument("arguments", nargs="*", help="arguments to pass to the release command")
 ])
 def command_release(options):
+
+    if options.command is not None and options.exec is not None:
+        logging.error("--command and --exec cannot be used together.")
+        exit(1)
+
     scope = resolve_scope(options)
     history = History(path=os.getcwd(), scope=scope)
     releases = history.releases
@@ -493,7 +499,7 @@ def command_release(options):
         logging.info("Pushing tag '%s'...", tag)
         run(["git", "push", "origin", tag], dry_run=options.dry_run)
 
-    if options.command is not None:
+    if options.command is not None or options.exec is not None:
         logging.info("Running command...")
         success = True
 
@@ -510,12 +516,14 @@ def command_release(options):
                 fh.write(notes)
 
             # Create a temporary executable script to make it easy to forward arguments to the command.
-            temporary_script = os.path.join(temporary_directory, "script.sh")
-            with open(temporary_script, "w") as fh:
-                fh.write("#!/bin/sh\n")
-                fh.write(options.command)
-            os.chmod(temporary_script, 0o744)
-            logging.debug("Running command '%s'", options.command)
+            if options.command is not None:
+                command = os.path.join(temporary_directory, "script.sh")
+                with open(command, "w") as fh:
+                    fh.write("#!/bin/sh\n")
+                    fh.write(options.command)
+                os.chmod(command, 0o744)
+            elif options.exec is not None:
+                command = os.path.abspath(options.exec)
 
             # Set up the environment.
             env = copy.deepcopy(os.environ)
@@ -527,10 +535,12 @@ def command_release(options):
             env['CHANGES_NOTES_FILE'] = notes_file.name
 
             # Run the command.
+            command_args = [command] + options.arguments
             if options.dry_run:
-                logging.info(options.command)
+                logging.info("Running command '%s'...", command_args)
             else:
-                result = subprocess.run([temporary_script] + options.arguments, capture_output=True, env=env)
+                logging.debug("Running command '%s' in directory '%s' with files '%s'...", command_args, os.getcwd(), os.listdir())
+                result = subprocess.run(command_args, capture_output=True, env=env)
                 try:
                     result.check_returncode()
                     logging.info(result.stdout.decode("utf-8").strip())
