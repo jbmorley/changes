@@ -116,7 +116,7 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("feat!: Breaking feat should increment major version"),
             ])
             self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
-            repository.changes_release()
+            repository.changes(["release"])
             repository.perform([
                 EmptyCommit("fix!: Breaking fix should increment major version"),
             ])
@@ -162,7 +162,7 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("feat: feature"),
             ])
-            repository.changes_release()
+            repository.changes(["release"])
             self.assertEqual(repository.tag(), ["0.1.0"])
 
     def test_release_tag_push(self):
@@ -186,7 +186,7 @@ class CLITestCase(unittest.TestCase):
             repository.perform([
                 EmptyCommit("feat: another feature"),
             ])
-            repository.changes_release()
+            repository.changes(["release"])
             self.assertEqual(sorted(repository.tag()), ["0.1.0", "cheese_0.1.0"])
             repository.perform([
                 EmptyCommit("fix(cheese): fixed something"),
@@ -218,7 +218,7 @@ class CLITestCase(unittest.TestCase):
     def test_release_fails_empty_repository(self):
         with Repository() as repository:
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes_release()
+                repository.changes(["release"])
 
     def test_release_fails_without_changes(self):
         with Repository() as repository:
@@ -227,7 +227,7 @@ class CLITestCase(unittest.TestCase):
                 Tag("0.1.1")
             ])
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes_release()
+                repository.changes(["release"])
 
     def test_release_fails_without_changes_or_previous_release(self):
         with Repository() as repository:
@@ -235,7 +235,7 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit with no changes"),
             ])
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes_release()
+                repository.changes(["release"])
 
     def test_release_command_default_interpreter(self):
         with Repository() as repository:
@@ -478,7 +478,7 @@ fi
 - Doesn't crash
 - Works
 """)
-            repository.changes_release()
+            repository.changes(["release"])
             self.assertEqual(repository.changes_notes(),
 """**Changes**
 
@@ -510,7 +510,7 @@ fi
                 EmptyCommit("fix: Works"),
             ])
             self.assertEqual(repository.changes_notes(released=True), "\n")
-            repository.changes_release()
+            repository.changes(["release"])
             self.assertEqual(repository.changes_notes(released=True),
 """**Fixes**
 
