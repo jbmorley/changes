@@ -71,7 +71,7 @@ class Tag(object):
 class Release(object):
 
     def perform(self, repository):
-        repository.changes_release()
+        repository.changes(["release"])
 
 
 class Repository(object):
@@ -169,16 +169,6 @@ class Repository(object):
             arguments = ["--verbose"] + arguments
         command = ["changes"] + arguments
         return self.run(command, env=environment)
-
-    def changes_release(self, scope=None, command=None, template=None, arguments=[]):
-        changes_arguments = ["release"]
-        if scope is not None:
-            changes_arguments.extend(["--scope", scope])
-        if command is not None:
-            changes_arguments.extend(["--command", command])
-        if template is not None:
-            changes_arguments.extend(["--template", template])
-        return self.changes(changes_arguments + arguments)
 
     def changes_notes(self, released=False, all=False, history=None, scope=None, template=None):
         arguments = ["notes"]
