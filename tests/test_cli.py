@@ -454,12 +454,12 @@ fi
                 EmptyCommit("initial commit"),
                 Tag("1.0.0")
             ])
-            self.assertEqual(repository.changes_notes(), "\n")
+            self.assertEqual(repository.changes(["notes"]), "\n")
             repository.perform([
                 EmptyCommit("fix: Doesn't crash"),
                 EmptyCommit("fix: Works"),
             ])
-            self.assertEqual(repository.changes_notes(),
+            self.assertEqual(repository.changes(["notes"]),
 """**Fixes**
 
 - Doesn't crash
@@ -468,7 +468,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: New Shiny"),
             ])
-            self.assertEqual(repository.changes_notes(),
+            self.assertEqual(repository.changes(["notes"]),
 """**Changes**
 
 - New Shiny
@@ -479,7 +479,7 @@ fi
 - Works
 """)
             repository.changes(["release"])
-            self.assertEqual(repository.changes_notes(),
+            self.assertEqual(repository.changes(["notes"]),
 """**Changes**
 
 - New Shiny
@@ -492,7 +492,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: More Shiny"),
             ])
-            self.assertEqual(repository.changes_notes(),
+            self.assertEqual(repository.changes(["notes"]),
 """**Changes**
 
 - More Shiny
@@ -504,14 +504,14 @@ fi
                 EmptyCommit("initial commit"),
                 Tag("1.0.0")
             ])
-            self.assertEqual(repository.changes_notes(), "\n")
+            self.assertEqual(repository.changes(["notes"]), "\n")
             repository.perform([
                 EmptyCommit("fix: Doesn't crash"),
                 EmptyCommit("fix: Works"),
             ])
-            self.assertEqual(repository.changes_notes(released=True), "\n")
+            self.assertEqual(repository.changes(["notes", "--released"]), "\n")
             repository.changes(["release"])
-            self.assertEqual(repository.changes_notes(released=True),
+            self.assertEqual(repository.changes(["notes", "--released"]),
 """**Fixes**
 
 - Doesn't crash
@@ -520,7 +520,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: More Shiny"),
             ])
-            self.assertEqual(repository.changes_notes(released=True),
+            self.assertEqual(repository.changes(["notes", "--released"]),
 """**Fixes**
 
 - Doesn't crash
@@ -539,7 +539,7 @@ fi
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_notes(all=True),
+            self.assertEqual(repository.changes(["notes", "--all"]),
 """# 1.1.0 (Unreleased)
 
 **Changes**
@@ -578,7 +578,7 @@ fi
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_notes(all=True, released=True),
+            self.assertEqual(repository.changes(["notes", "--all", "--released"]),
 """# 1.0.0
 
 **Fixes**
@@ -611,7 +611,7 @@ fi
                 Release(),
                 EmptyCommit("feat: Unreleased feature"),
             ])
-            self.assertEqual(repository.changes_notes(all=True, released=True),
+            self.assertEqual(repository.changes(["notes", "--all", "--released"]),
 """# 1.0.0
 
 **Fixes**
@@ -645,7 +645,7 @@ fi
                 EmptyCommit("feat: Unreleased feature"),
             ])
             repository.write_file("template.txt", "{{ releases | length }}")
-            self.assertEqual(repository.changes_notes(all=True, released=True, template="template.txt"), "3\n")
+            self.assertEqual(repository.changes(["notes", "--all", "--released", "--template", "template.txt"]), "3\n")
 
     def test_notes_additional_history_preserves_ordering(self):
         with Repository() as repository:
@@ -659,7 +659,7 @@ fi
                     "feat: Bar",
                 ]
             })
-            self.assertEqual(repository.changes_notes(released=True, all=True, history="history.yaml"),
+            self.assertEqual(repository.changes(["notes", "--released", "--all", "--history", "history.yaml"]),
 """# 2.0.0
 
 **Changes**
@@ -686,7 +686,7 @@ fi
                     "feat: Bar",
                 ]
             })
-            self.assertEqual(repository.changes_notes(all=True, history="history.yaml"),
+            self.assertEqual(repository.changes(["notes", "--all", "--history", "history.yaml"]),
 """# 1.11.0 (Unreleased)
 
 **Changes**
@@ -718,7 +718,7 @@ fi
                     "feat!: Initial release"
                 ]
             })
-            self.assertEqual(repository.changes_notes(all=True, history="history.yaml", scope="macOS"),
+            self.assertEqual(repository.changes(["notes", "--all", "--history", "history.yaml", "--scope", "macOS"]),
 """# 1.0.1
 
 **Changes**
@@ -733,7 +733,7 @@ fi
 # 1.0.0
 """)
 
-            self.assertEqual(repository.changes_notes(all=True, released=True, history="history.yaml"),
+            self.assertEqual(repository.changes(["notes", "--all", "--released", "--history", "history.yaml"]),
 """# 1.0.0
 
 **Changes**

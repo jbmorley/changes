@@ -170,21 +170,6 @@ class Repository(object):
         command = ["changes"] + arguments
         return self.run(command, env=environment)
 
-    def changes_notes(self, released=False, all=False, history=None, scope=None, template=None):
-        arguments = ["notes"]
-        if released:
-            arguments.append("--released")
-        if all:
-            arguments.append("--all")
-        if history is not None:
-            arguments.extend(["--history", history])
-        if scope is not None:
-            arguments.extend(["--scope", scope])
-        if template is not None:
-            arguments.extend(["--template", template])
-        return self.changes(arguments)
-
-
     @property
     def path(self):
         return self.directory.name
