@@ -200,7 +200,7 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("feat: feature"),
             ])
             with self.assertRaises(subprocess.CalledProcessError):
-                repository.changes_release(command="exit 1")
+                repository.changes(["release", "--command", "exit 1"])
             self.assertEqual(repository.tag(), [])
 
     def test_release_tag_push_cleanup_on_failure(self):
@@ -253,7 +253,7 @@ class CLITestCase(unittest.TestCase):
             script_path = repository.write_file("script.sh", """#!/bin/bash
 ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
 """, mode=0o744)
-            repository.changes_release(command=script_path)
+            repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt").strip(), "/bin/bash")
 
     def test_release_command_bash_script_correct_echo(self):
@@ -262,7 +262,7 @@ ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
                 EmptyCommit("feat: feature"),
             ])
             script_path = repository.write_bash_script("script.sh", "echo -n Foo > output.txt")
-            repository.changes_release(command=script_path)
+            repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt"), "Foo")
 
     def test_release_command_and_exec_fails(self):
@@ -320,15 +320,15 @@ else
 echo -n "release" > output.txt
 fi
 """)
-            repository.changes_release(command=script_path)
+            repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt"), "prerelease")
 
             repository.perform([EmptyCommit("fix: minor fix")])
-            repository.changes_release(command=script_path)
+            repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt"), "prerelease")
 
             repository.perform([EmptyCommit("feat!: initial release")])
-            repository.changes_release(command=script_path)
+            repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt"), "release")
 
     def test_release_command_environment_title(self):
@@ -344,7 +344,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes_release(command="echo $CHANGES_TAG >> output.txt")
+            repository.changes(["release", "--command", "echo $CHANGES_TAG >> output.txt"])
             self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
 
     def test_release_command_environment_tag_with_scope(self):
@@ -368,7 +368,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            repository.changes(["release", "--command", "echo \"$CHANGES_NOTES\" >> output.txt"])
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
@@ -378,7 +378,7 @@ fi
             repository.perform([
                 EmptyCommit("fix: Improved something"),
             ])
-            repository.changes_release(command="echo \"$CHANGES_NOTES\" >> output.txt")
+            repository.changes(["release", "--command", "echo \"$CHANGES_NOTES\" >> output.txt"])
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
@@ -395,7 +395,7 @@ fi
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt")
+            repository.changes(["release", "--command", "cat \"$CHANGES_NOTES_FILE\" > output.txt"])
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
@@ -408,7 +408,7 @@ fi
                 EmptyCommit("feat: New feature"),
                 EmptyCommit("fix: Improved something"),
             ])
-            repository.changes_release(command="cat \"$CHANGES_NOTES_FILE\" > output.txt")
+            repository.changes(["release", "--command", "cat \"$CHANGES_NOTES_FILE\" > output.txt"])
             self.assertEqual(repository.read_file("output.txt"),
 """**Changes**
 
@@ -435,7 +435,7 @@ fi
                 EmptyCommit("feat: New feature"),
                 EmptyCommit("fix: Improved something"),
             ])
-            repository.changes_release(command="echo \"$@\" > output.txt", arguments=["a"])
+            repository.changes(["release", "--command", "echo \"$@\" > output.txt", "a"])
             self.assertEqual(repository.read_file("output.txt"), "a\n")
 
     def test_release_command_multiple_arguments(self):
