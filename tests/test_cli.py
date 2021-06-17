@@ -45,27 +45,27 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("inital commit"),
                 Tag("0.2.0")
             ])
-            self.assertEqual(repository.changes_version(), "0.2.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.2.0")
             repository.perform([
                 EmptyCommit("ignored commit"),
             ])
-            self.assertEqual(repository.changes_version(), "0.2.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.2.0")
             repository.perform([
                 EmptyCommit("fix: this fix should update the patch version"),
             ])
-            self.assertEqual(repository.changes_version(), "0.2.1")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.2.1")
             repository.perform([
                 EmptyCommit("feat: this feature should update the minor verison"),
             ])
-            self.assertEqual(repository.changes_version(), "0.3.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.3.0")
             repository.perform([
                 EmptyCommit("feat!: this break should update the major verison"),
             ])
-            self.assertEqual(repository.changes_version(), "1.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
 
     def test_current_version_no_changes(self):
         with Repository() as repository:
-            self.assertEqual(repository.changes_version(), "0.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.0.0")
 
     def test_current_version_multiple_changes_yield_single_increment(self):
         with Repository() as repository:
@@ -73,22 +73,22 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("inital commit"),
                 Tag("0.1.0")
             ])
-            self.assertEqual(repository.changes_version(), "0.1.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.1.0")
             repository.perform([
                 EmptyCommit("fix: this fix should update the patch version"),
                 EmptyCommit("fix: this fix should not update the patch version"),
             ])
-            self.assertEqual(repository.changes_version(), "0.1.1")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.1.1")
             repository.perform([
                 EmptyCommit("feat: this feat should update the minor version"),
                 EmptyCommit("feat: this feat should not update the minor version"),
             ])
-            self.assertEqual(repository.changes_version(), "0.2.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "0.2.0")
             repository.perform([
                 EmptyCommit("feat!: this breaking change should update the major version"),
                 EmptyCommit("feat!: this breaking change should not update the major version"),
             ])
-            self.assertEqual(repository.changes_version(), "1.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
 
     def test_current_version_with_scope(self):
         with Repository() as repository:
@@ -96,10 +96,9 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit"),
                 Tag("a_1.0.0"),
             ])
-            self.assertEqual(repository.changes_version(), "0.0.0")
-            self.assertEqual(repository.changes_version(scope="a"), "1.0.0")
-            self.assertEqual(repository.changes_version(scope="b"), "0.0.0")
-
+            self.assertEqual(repository.changes(["version"]).strip(), "0.0.0")
+            self.assertEqual(repository.changes(["version", "--scope", "a"]).strip(), "1.0.0")
+            self.assertEqual(repository.changes(["version", "--scope", "b"]).strip(), "0.0.0")
 
     def test_current_version_with_legacy_scope(self):
         with Repository() as repository:
@@ -111,23 +110,22 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["--scope", "a", "version"]), "1.0.0\n")
             self.assertEqual(repository.changes(["--scope", "b", "version"]), "0.0.0\n")
 
-
     def test_exclamation_mark_indicates_breaking_change(self):
         with Repository()as repository:
             repository.perform([
                 EmptyCommit("feat!: Breaking feat should increment major version"),
             ])
-            self.assertEqual(repository.changes_version(), "1.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
             repository.changes_release()
             repository.perform([
                 EmptyCommit("fix!: Breaking fix should increment major version"),
             ])
-            self.assertEqual(repository.changes_version(), "2.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "2.0.0")
             repository.perform([
                 EmptyCommit("wibble!: Unknown breaking type should do nothing"),
                 EmptyCommit("ci!: Unknown ignored type should do nothing"),
             ])
-            self.assertEqual(repository.changes_version(), "2.0.0")
+            self.assertEqual(repository.changes(["version"]).strip(), "2.0.0")
 
     def test_version_released_raw_output(self):
         with Repository() as repository:
@@ -151,13 +149,13 @@ class CLITestCase(unittest.TestCase):
                 EmptyCommit("initial commit"),
                 Tag("2.1.3"),
             ])
-            self.assertEqual(repository.changes_version(released=True), "2.1.3")
+            self.assertEqual(repository.changes(["version", "--released"]).strip(), "2.1.3")
             repository.perform([
                 EmptyCommit("fix: this fix should not affect the released version"),
                 EmptyCommit("feat: this feat should not affect the released version"),
                 EmptyCommit("feat!: this breaking change should not affect the released version"),
             ])
-            self.assertEqual(repository.changes_version(released=True), "2.1.3")
+            self.assertEqual(repository.changes(["version", "--released"]).strip(), "2.1.3")
 
     def test_release_tag(self):
         with Repository() as repository:

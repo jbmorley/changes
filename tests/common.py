@@ -170,14 +170,6 @@ class Repository(object):
         command = ["changes"] + arguments
         return self.run(command, env=environment)
 
-    def changes_version(self, scope=None, released=False):
-        arguments = ["version"]
-        if scope is not None:
-            arguments.extend(["--scope", scope])
-        if released:
-            arguments.extend(["--released"])
-        return self.changes(arguments).strip()
-
     def changes_release(self, scope=None, command=None, template=None, arguments=[]):
         changes_arguments = ["release"]
         if scope is not None:
