@@ -122,6 +122,30 @@ class CLITestCase(unittest.TestCase):
             result.check_returncode()
             self.assertEqual(result.stdout.decode("utf-8").strip(), "0.1.0")
 
+    def test_fails_on_shallow_clone(self):
+        with Repository() as remote, tempfile.TemporaryDirectory() as temporary_directory:
+            remote.perform([
+                EmptyCommit("feat: feature"),
+                EmptyCommit("fix: oops"),
+            ])
+            common.run(["git", "clone", "--depth", "1", "file://" + remote.path, "clone"], temporary_directory)
+            repository_path = os.path.join(temporary_directory, "clone")
+
+            result = common.run(["changes", "version"], repository_path)
+            with self.assertRaises(subprocess.CalledProcessError):
+                result.check_returncode()
+            self.assertEqual(result.stderr.decode("utf-8").strip(), "[ERROR] Unable to determine change history for shallow clones.")
+
+            result = common.run(["changes", "notes"], repository_path)
+            with self.assertRaises(subprocess.CalledProcessError):
+                result.check_returncode()
+            self.assertEqual(result.stderr.decode("utf-8").strip(), "[ERROR] Unable to determine change history for shallow clones.")
+
+            result = common.run(["changes", "release"], repository_path)
+            with self.assertRaises(subprocess.CalledProcessError):
+                result.check_returncode()
+            self.assertEqual(result.stderr.decode("utf-8").strip(), "[ERROR] Unable to determine change history for shallow clones.")
+
     def test_exclamation_mark_indicates_breaking_change(self):
         with Repository()as repository:
             repository.perform([

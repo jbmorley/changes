@@ -273,6 +273,10 @@ class History(object):
     def _load(self):
         with Chdir(self.path):
 
+            if is_shallow():
+                logging.error("Unable to determine change history for shallow clones.")
+                exit(1)
+
             # Get all the changes on the current branch.
             all_changes = get_commits(scope=self.scope)
 
@@ -342,6 +346,9 @@ def run(command, dry_run=False):
     lines = result.stdout.decode("utf-8").strip().split("\n")
     return lines
 
+
+def is_shallow():
+    return run(["git", "rev-parse", "--is-shallow-repository"])[0] == "true"
 
 def get_tags(sha):
     try:
