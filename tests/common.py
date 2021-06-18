@@ -89,19 +89,14 @@ class Repository(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.directory.__exit__(exc_type, exc_value, traceback)
 
-    def run(self, command, env=None):
-        with Chdir(self.path):
-            kwargs = {}
-            if env is not None:
-                kwargs["env"] = env
-            logging.debug(command)
-            result = subprocess.run(command, capture_output=True, **kwargs)
-            try:
-                result.check_returncode()
-            except subprocess.CalledProcessError as e:
-                logging.debug(e.stderr.decode("utf-8"))
-                raise
-            return result.stdout.decode("utf-8")
+    def run(self, command):
+        result = run(command, self.path)
+        try:
+            result.check_returncode()
+        except subprocess.CalledProcessError as e:
+            logging.debug(e.stderr.decode("utf-8"))
+            raise
+        return result.stdout.decode("utf-8")
 
     def read_file(self, path):
         with open(os.path.join(self.path, path)) as fh:
@@ -163,12 +158,10 @@ class Repository(object):
             operation.perform(self)
 
     def changes(self, arguments=[]):
-        environment = dict(os.environ)
-        environment["PATH"] = environment["PATH"] + ":" + ROOT_DIRECTORY
         if debug:
             arguments = ["--verbose"] + arguments
         command = ["changes"] + arguments
-        return self.run(command, env=environment)
+        return self.run(command)
 
     def changes_notes(self, released=False, all=False, history=None, scope=None, template=None):
         arguments = ["notes"]
@@ -188,3 +181,21 @@ class Repository(object):
     @property
     def path(self):
         return self.directory.name
+
+
+def environment():
+    """
+    Return the current environment, ensuring the changes script is available on the PATH.
+    """
+    environment = dict(os.environ)
+    environment["PATH"] = ROOT_DIRECTORY + ":" + environment["PATH"]
+    return environment
+
+
+def run(command, working_directory):
+    """
+    Run a command ensuring the changes script is available on the PATH, and capturing the output.
+    """
+    with Chdir(working_directory):
+        logging.debug(command)
+        return subprocess.run(command, capture_output=True, env=environment())
