@@ -23,6 +23,7 @@
 import logging
 import os
 import subprocess
+import tempfile
 import unittest
 
 import common
@@ -32,14 +33,14 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 
 class CLITestCase(unittest.TestCase):
 
-    def test_current_version_raw_output(self):
+    def test_version_raw_output(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
             ])
             self.assertEqual(repository.changes(["version"]), "0.0.0\n")
 
-    def test_current_version(self):
+    def test_version(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("inital commit"),
@@ -63,11 +64,11 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
 
-    def test_current_version_no_changes(self):
+    def test_version_no_changes(self):
         with Repository() as repository:
             self.assertEqual(repository.changes(["version"]).strip(), "0.0.0")
 
-    def test_current_version_multiple_changes_yield_single_increment(self):
+    def test_version_multiple_changes_yield_single_increment(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("inital commit"),
@@ -90,7 +91,7 @@ class CLITestCase(unittest.TestCase):
             ])
             self.assertEqual(repository.changes(["version"]).strip(), "1.0.0")
 
-    def test_current_version_with_scope(self):
+    def test_version_with_scope(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -100,7 +101,7 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["version", "--scope", "a"]).strip(), "1.0.0")
             self.assertEqual(repository.changes(["version", "--scope", "b"]).strip(), "0.0.0")
 
-    def test_current_version_with_legacy_scope(self):
+    def test_version_with_legacy_scope(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -109,6 +110,17 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["version"]), "0.0.0\n")
             self.assertEqual(repository.changes(["--scope", "a", "version"]), "1.0.0\n")
             self.assertEqual(repository.changes(["--scope", "b", "version"]), "0.0.0\n")
+
+    def test_version_on_clone(self):
+        with Repository() as remote, tempfile.TemporaryDirectory() as temporary_directory:
+            remote.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            common.run(["git", "clone", remote.path, "clone"], temporary_directory)
+            repository_path = os.path.join(temporary_directory, "clone")
+            result = common.run(["changes", "version"], repository_path)
+            result.check_returncode()
+            self.assertEqual(result.stdout.decode("utf-8").strip(), "0.1.0")
 
     def test_exclamation_mark_indicates_breaking_change(self):
         with Repository()as repository:
