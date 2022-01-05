@@ -128,7 +128,7 @@ class Version(object):
         self.did_update_patch = True
 
     @property
-    def is_prerelease(self):
+    def initial_development(self):
         if self.major == 0:
             return True
         return False
@@ -465,7 +465,7 @@ def command_version(options):
     print(history.releases[0].version)
 
 
-@cli.command("release", help="tag the commit as a new release", arguments=[
+@cli.command("release", help="tag the commit as a new release", formatter_class=argparse.RawDescriptionHelpFormatter, arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
     cli.Argument("--command", help="additional command to run during the release; if the command fails, the release will be rolled back (cannot be used alongside --exec)"),
@@ -474,7 +474,16 @@ def command_version(options):
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
     cli.Argument("--template", help="custom Jinja2 template"),
     cli.Argument("arguments", nargs="*", help="arguments to pass to the release command")
-])
+], epilog="""
+When calling a script specified by `--command` or `--exec`, Changes defines a number of environment variables:
+
+  CHANGES_TITLE                a proposed title for the release
+  CHANGES_VERSION              full version number
+  CHANGES_INITIAL_DEVELOPMENT  true if the major version number is less than 0, false otherwise
+  CHANGES_TAG                  the Git tag used for the release
+  CHANGES_NOTES                the release notes
+  CHANGES_NOTES_FILE           path to a file containing the release notes
+""")
 def command_release(options):
 
     if options.command is not None and options.exec is not None:
@@ -536,7 +545,7 @@ def command_release(options):
             env = copy.deepcopy(os.environ)
             env['CHANGES_TITLE'] = title
             env['CHANGES_VERSION'] = str(version)
-            env['CHANGES_PRERELEASE'] = "true" if version.is_prerelease else "false"
+            env['CHANGES_INITIAL_DEVELOPMENT'] = "true" if version.initial_development else "false"
             env['CHANGES_TAG'] = tag
             env['CHANGES_NOTES'] = notes
             env['CHANGES_NOTES_FILE'] = notes_file.name
