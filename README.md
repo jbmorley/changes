@@ -13,3 +13,25 @@ git clone git@github.com:jbmorley/changes.git
 cd changes
 pipenv install
 ```
+
+## Usage
+
+```bash
+changes --help
+```
+
+You can also find out details of specific sub-commands by passing the `--help` flag directly to those commands. For example,
+
+```bash
+changes release --help
+```
+
+## Development
+
+### Tests
+
+Run tests locally using the `test.sh` script:
+
+```bash
+./scripts/test.sh
+```

@@ -350,7 +350,7 @@ ps h -p $$ -o args='' | cut -f1 -d' ' > output.txt
         with Repository() as repository:
             repository.perform([EmptyCommit("feat: initial commit")])
             script_path = repository.write_bash_script("script.sh", """
-if $CHANGES_PRERELEASE ; then
+if $CHANGES_INITIAL_DEVELOPMENT ; then
 echo -n "prerelease" > output.txt
 else
 echo -n "release" > output.txt

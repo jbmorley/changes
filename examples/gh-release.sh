@@ -26,7 +26,7 @@ set -x
 
 # Actually make the release.
 FLAGS=()
-if $CHANGES_PRERELEASE ; then
+if $CHANGES_INITIAL_DEVELOPMENT ; then
     FLAGS+=("--prerelease")
 fi
 gh release create "$CHANGES_TAG" --title "$CHANGES_TITLE" --notes-file "$CHANGES_NOTES_FILE" "${FLAGS[@]}"

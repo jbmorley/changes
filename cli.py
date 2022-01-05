@@ -30,10 +30,12 @@ COMMANDS = {}
 
 class Command(object):
 
-    def __init__(self, name, help, arguments, callback):
+    def __init__(self, name, help, arguments, epilog, formatter_class, callback):
         self.name = name
         self.help = help
         self.arguments = arguments
+        self.epilog = epilog
+        self.formatter_class = formatter_class
         self.callback = callback
 
 class Argument(object):
@@ -43,12 +45,12 @@ class Argument(object):
         self.kwargs = kwargs
 
 
-def command(name, help="", arguments=[]):
+def command(name, help="", arguments=[], epilog=None, formatter_class=argparse.HelpFormatter):
     def wrapper(fn):
         @functools.wraps(fn)
         def inner(*args, **kwargs):
             return fn(*args, **kwargs)
-        COMMANDS[name] = Command(name, help, arguments, inner)
+        COMMANDS[name] = Command(name, help, arguments, epilog, formatter_class, inner)
         return inner
     return wrapper
 
@@ -59,7 +61,10 @@ class CommandParser(object):
         self.parser = argparse.ArgumentParser(*args, **kwargs)
         subparsers = self.parser.add_subparsers(help="command")
         for name, command in COMMANDS.items():
-            subparser = subparsers.add_parser(command.name, help=command.help)
+            subparser = subparsers.add_parser(command.name,
+                                              help=command.help,
+                                              epilog=command.epilog,
+                                              formatter_class=command.formatter_class)
             for argument in command.arguments:
                 subparser.add_argument(*(argument.args), **(argument.kwargs))
             subparser.set_defaults(fn=command.callback)
