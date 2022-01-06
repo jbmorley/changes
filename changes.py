@@ -123,6 +123,19 @@ class PreRelease(object):
             return False
         return True
 
+    def __lt__(self, other):
+        if self == other:
+            return False
+        if self.prefix > other.prefix:
+            return False
+        if self.prefix < other.prefix:
+            return True
+        if self.version > other.version:
+            return False
+        if self.version < other.version:
+            return True
+        return True
+
 
 class Version(object):
 
@@ -200,6 +213,12 @@ class Version(object):
             return True
         if self.patch > other.patch:
             return False
+        if self.pre_release is None and other.pre_release is not None:
+            return False
+        if self.pre_release is not None and other.pre_release is None:
+            return True
+        if self.pre_release is not None and other.pre_release is not None:
+            return self.pre_release < other.pre_release
         return True
 
     def __hash__(self):

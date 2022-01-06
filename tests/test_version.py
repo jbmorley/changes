@@ -46,12 +46,12 @@ class VersionTestCase(unittest.TestCase):
     # TODO: Test how pre-release version changes carry forwards.
     # TODO: Test parsing.
     # TODO: Test behaviour of a sequence of pre-release versions.
-    # TODO: Test equality with pre-release components.
     # TODO: Version should be the same, but there should be pre-release details in the environment.
     # TODO: Should the title include the pre-release details?
     # TODO: The version objects imported from a history with pre-release components need to be handled very carefully.
     #       Perhaps we should only import the pre-release versions iff we're running in pre-release mode and they
     #       match the current tag?
+    # TODO: What should the release notes look like?
 
     def test_comparators(self):
 
@@ -80,6 +80,14 @@ class VersionTestCase(unittest.TestCase):
         self.assertFalse(Version(1, 2, 0) < Version(1, 1, 0))
         self.assertFalse(Version(1, 1, 2) < Version(1, 1, 1))
         self.assertTrue(Version(0, 1, 0) < Version(1, 0, 0))
+        self.assertTrue(Version.from_string("1.0.0-alpha") < Version.from_string("1.0.0"))
+        self.assertFalse(Version.from_string("1.0.0") < Version.from_string("1.0.0-alpha"))
+        self.assertTrue(Version.from_string("1.0.0-alpha") < Version.from_string("1.0.0-beta"))
+        self.assertFalse(Version.from_string("1.0.0-beta") < Version.from_string("1.0.0-alpha"))
+        self.assertTrue(Version.from_string("1.0.0-rc") < Version.from_string("1.0.0-rc.3"))
+        self.assertFalse(Version.from_string("1.0.0-rc.3") < Version.from_string("1.0.0-rc"))
+        self.assertTrue(Version.from_string("1.0.0-rc.2") < Version.from_string("1.0.0-rc.3"))
+        self.assertFalse(Version.from_string("1.0.0-rc.3") < Version.from_string("1.0.0-rc.2"))
 
     def test_from_string(self):
         self.assertEqual(Version.from_string("1.5.7"), Version(1, 5, 7))
