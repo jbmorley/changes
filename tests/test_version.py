@@ -28,7 +28,7 @@ import common
 
 import changes
 
-from changes import Version
+from changes import PreRelease, Version
 
 
 class VersionTestCase(unittest.TestCase):
@@ -37,6 +37,21 @@ class VersionTestCase(unittest.TestCase):
         self.assertEqual(str(Version()), "0.0.0")
         self.assertEqual(str(Version(0, 1, 1)), "0.1.1")
         self.assertEqual(str(Version(2, 10, 5)), "2.10.5")
+        self.assertEqual(str(Version(1, 0, 0, PreRelease("rc"))), "1.0.0")
+        self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 0))), "1.0.0-rc")
+        self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 3))), "1.0.0-rc.3")
+
+    # TODO: Test sorting.
+    # TODO: Test incrementing.
+    # TODO: Test how pre-release version changes carry forwards.
+    # TODO: Test parsing.
+    # TODO: Test behaviour of a sequence of pre-release versions.
+    # TODO: Test equality with pre-release components.
+    # TODO: Version should be the same, but there should be pre-release details in the environment.
+    # TODO: Should the title include the pre-release details?
+    # TODO: The version objects imported from a history with pre-release components need to be handled very carefully.
+    #       Perhaps we should only import the pre-release versions iff we're running in pre-release mode and they
+    #       match the current tag?
 
     def test_comparators(self):
 
@@ -64,10 +79,15 @@ class VersionTestCase(unittest.TestCase):
         self.assertEqual(Version.from_string("0.23.0"), Version(0, 23, 0))
         self.assertEqual(Version.from_string("0.0.0"), Version())
         self.assertEqual(Version.from_string("macOS_1.4.6", strip_scope="macOS"), Version(1, 4, 6))
+
         with self.assertRaises(ValueError):
             Version.from_string("macOS_1.4.6", strip_scope="something"), Version(1, 4, 6)
         with self.assertRaises(ValueError):
             Version.from_string("macOS_1.4.6"), Version(1, 4, 6)
+
+        self.assertEqual(Version.from_string("1.5.9-rc"), Version(1, 5, 9, PreRelease("rc", 0)))
+        self.assertEqual(Version.from_string("1.5.9-rc.0"), Version(1, 5, 9, PreRelease("rc", 0)))
+        self.assertEqual(Version.from_string("1.5.9-alpha.34"), Version(1, 5, 9, PreRelease("alpha", 34)))
 
     def test_from_string_unknown_scope(self):
         with self.assertRaises(changes.UnknownScope):
@@ -100,6 +120,91 @@ class VersionTestCase(unittest.TestCase):
         self.assertFalse(Version(1, 0, 0).initial_development)
         self.assertFalse(Version(200, 1, 0).initial_development)
         self.assertFalse(Version(2, 0, 10).initial_development)
+
+    def test_is_pre_release(self):
+        self.assertFalse(Version().is_pre_release)
+        self.assertFalse(Version(0, 1, 4).is_pre_release)
+        self.assertFalse(Version(0, 0, 1).is_pre_release)
+        self.assertFalse(Version(0, 20, 0).is_pre_release)
+        self.assertFalse(Version(1, 0, 0).is_pre_release)
+        self.assertFalse(Version(200, 1, 0).is_pre_release)
+        self.assertFalse(Version(2, 0, 10).is_pre_release)
+        self.assertFalse(Version(1, 0, 0, PreRelease("rc")).is_pre_release)
+        self.assertTrue(Version(1, 0, 0, PreRelease("rc", 0)).is_pre_release)
+        self.assertTrue(Version(1, 0, 0, PreRelease("rc", 3)).is_pre_release)
+
+    def test_increment(self):
+        version = Version(1, 0, 0)
+        version.bump_major()
+        self.assertEqual(str(version), "2.0.0")
+        version.bump_major()
+        self.assertEqual(str(version), "2.0.0")
+
+        version = Version(1, 0, 0)
+        version.bump_minor()
+        self.assertEqual(str(version), "1.1.0")
+        version.bump_minor()
+        self.assertEqual(str(version), "1.1.0")
+
+        version = Version(1, 0, 0)
+        version.bump_patch()
+        self.assertEqual(str(version), "1.0.1")
+        version.bump_patch()
+        self.assertEqual(str(version), "1.0.1")
+
+        version = Version(1, 0, 0)
+        version.bump_minor()
+        self.assertEqual(str(version), "1.1.0")
+        version.bump_major()
+        self.assertEqual(str(version), "2.0.0")
+        version.bump_minor()
+        self.assertEqual(str(version), "2.0.0")
+
+        version = Version(1, 0, 0)
+        version.bump_patch()
+        self.assertEqual(str(version), "1.0.1")
+        version.bump_major()
+        self.assertEqual(str(version), "2.0.0")
+        version.bump_patch()
+        self.assertEqual(str(version), "2.0.0")
+
+        version = Version(2, 1, 0, PreRelease("alpha", 0))
+        self.assertEqual(str(version), "2.1.0-alpha")
+        version.bump_major()
+        self.assertEqual(str(version), "3.0.0-alpha.1")
+        version.bump_major()
+        self.assertEqual(str(version), "3.0.0-alpha.1")
+
+        version = Version(2, 1, 0, PreRelease("alpha", 0))
+        self.assertEqual(str(version), "2.1.0-alpha")
+        version.bump_minor()
+        self.assertEqual(str(version), "2.2.0-alpha.1")
+        version.bump_minor()
+        self.assertEqual(str(version), "2.2.0-alpha.1")
+
+        version = Version(2, 1, 0, PreRelease("alpha", 0))
+        self.assertEqual(str(version), "2.1.0-alpha")
+        version.bump_patch()
+        self.assertEqual(str(version), "2.1.1-alpha.1")
+        version.bump_patch()
+        self.assertEqual(str(version), "2.1.1-alpha.1")
+
+        version = Version(2, 1, 0, PreRelease("rc", 4))
+        self.assertEqual(str(version), "2.1.0-rc.4")
+        version.bump_patch()
+        self.assertEqual(str(version), "2.1.1-rc.5")
+        version.bump_patch()
+        self.assertEqual(str(version), "2.1.1-rc.5")
+
+        # TODO: Perhaps bumping the versions should cause a bump in the RC iff there's a change.
+
+
+        # TODO: Double check the behaviour of versions which are allowed to be pre-release but don't include changes.
+
+        # TODO: Test that versions that are marked as 'pre-release' do not render pre-release components without changes
+        #       and do render pre-release components with a change.
+        # version = Version(4, 5, 0) + PreRelease("rc", 0)
+
 
 
 if __name__ == '__main__':

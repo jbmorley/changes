@@ -104,6 +104,8 @@ class HistoryTestCase(unittest.TestCase):
             releases = changes.load_history(os.path.join(repository.path, "history.yaml"), scope="cheese")
             self.assertEqual(len(releases), 0)
 
+    # TODO: Ensure pre-release versions can come from the history.
+
 
 if __name__ == '__main__':
     unittest.main()

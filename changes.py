@@ -96,36 +96,76 @@ class Chdir(object):
         os.chdir(self.pwd)
 
 
+# TODO: Rename this?
+class PreRelease(object):
+
+    def __init__(self, name, version=None):
+        self.name = name
+        self.version = version
+        self._did_update = False
+
+    def bump(self):
+        if self._did_update:
+            return
+        self._did_update = True
+        if self.version is None:
+            self.version = 0
+        else:
+            self.version = self.version + 1
+
+    @property
+    def is_active(self):
+        return self.version is not None
+
+    def __str__(self):
+        if self.version:
+            return f"{self.name}.{self.version}"
+        return self.name
+
+
 class Version(object):
 
-    def __init__(self, major=0, minor=0, patch=0):
+    # TODO: Only support one pre_release component for the time being.
+    def __init__(self, major=0, minor=0, patch=0, pre_release=None):
         self.major = major
         self.minor = minor
         self.patch = patch
-        self.did_update_major = False
-        self.did_update_minor = False
-        self.did_update_patch = False
+        self.pre_release = pre_release
+        self._did_update_major = False
+        self._did_update_minor = False
+        self._did_update_patch = False
 
     def bump_major(self):
-        if self.did_update_major:
+        self._bump_pre_release()
+        if self._did_update_major:
             return
         self.major = self.major + 1
         self.minor = 0
         self.patch = 0
-        self.did_update_major = True
+        self._did_update_major = True
 
     def bump_minor(self):
-        if self.did_update_minor or self.did_update_major:
+        self._bump_pre_release()
+        if self._did_update_minor or self._did_update_major:
             return
         self.minor = self.minor + 1
         self.patch = 0
-        self.did_update_minor = True
+        self._did_update_minor = True
 
     def bump_patch(self):
-        if self.did_update_patch or self.did_update_minor or self.did_update_major:
+        self._bump_pre_release()
+        if self._did_update_patch or self._did_update_minor or self._did_update_major:
             return
         self.patch = self.patch + 1
-        self.did_update_patch = True
+        self._did_update_patch = True
+
+    def _bump_pre_release(self):
+        """
+        Bumps the version pre-release component (if there is one).
+        """
+        if self.pre_release is None:
+            return
+        self.pre_release.bump()
 
     @property
     def initial_development(self):
@@ -133,10 +173,18 @@ class Version(object):
             return True
         return False
 
+    @property
+    def is_pre_release(self):
+        return self.pre_release is not None and self.pre_release.is_active
+
     def __str__(self):
+        if self.is_pre_release:
+            return f"{self.major}.{self.minor}.{self.patch}-{str(self.pre_release)}"
         return f"{self.major}.{self.minor}.{self.patch}"
 
     def __eq__(self, other):
+        if not isinstance(other, Version):
+            return False
         if self.major != other.major:
             return False
         if self.minor != other.minor:
@@ -184,11 +232,11 @@ class Change(object):
 
 class Commit(Change):
 
-    def __init__(self, sha, message, tags, version):
+    def __init__(self, sha, message, tags, versions):
         super().__init__(message)
         self.sha = sha
         self.tags = tags
-        self.version = version
+        self.versions = versions
 
 
 class Message(object):
@@ -216,6 +264,29 @@ class Message(object):
         return self.description
 
 
+class Group(object):
+
+    def __init__(self, identifier, items):
+        self.identifier = identifier
+        self.items = items
+
+    def __repr__(self):
+        return "Group(identiifer=%r, items=%r)" % (self.identifier, self.items)
+
+
+# TODO: Consider reusing this?
+def group(items, identifier):
+    results = [Group(None, [])]
+    for item in items:
+        item_identifier = identifier(item)
+        if item_identifier is not None and results[-1].identifier != item_identifier:
+            results.append(Group(item_identifier, []))
+        results[-1].items.append(item)
+    if not results[0].items:
+        results.pop(0)
+    return results
+
+
 class Release(object):
 
     def __init__(self, version, changes, is_released=False):
@@ -223,9 +294,15 @@ class Release(object):
         self.changes = changes
         self.is_released = is_released
 
-    def set_previous_version(self, previous_version):
+    # TODO: Maybe it's better to update the previous version to allow pre-releases?
+    def calculate_version(self, previous_version, pre_release_prefix=None):
         """Recomputes the current version based on the previous version by applying the changes in order."""
+
+        # Copy the previous version, and check to see if we need to permit pre-releases.
+        # TODO: Do we really need to manage pre-releases in this way?
         self.version = copy.deepcopy(previous_version)
+
+        # Iterate over all the changes that are in this release and determine the version number.
         for commit in reversed(self.changes):
             if commit.message.type in OPERATIONS and OPERATIONS[commit.message.type] is not None:
                 if commit.message.breaking_change:
@@ -234,6 +311,38 @@ class Release(object):
                     OPERATIONS[commit.message.type](commit, self.version)
             else:
                 logging.warning("Ignoring commit: '%s'", commit.message.description)
+
+        # If we're not being asked to generate a pre-release version we're finished.
+        if pre_release_prefix is None:
+            return
+
+        # TODO: Only do this is we're in a pre-release scenario.
+        # Check to see if there's a pre-release version that corresponds with our MAJOR.MINOR.PATCH version. If there is
+        # we use this pre-release component and increment it. Otherwise, we create a new pre-release with the requested
+        # prefix.
+        # TODO: We also need to double-check the scope?? Or is the scope already being filtered out at the moment.
+        # TODO: Write tests for multiple pre-releases with scopes and different versions!
+
+        def relevant_pre_release_version(commit):
+            pre_release_versions = sorted([version for version in commit.versions
+                                           if (version.is_pre_release and
+                                               version.pre_release.name == pre_release_prefix and
+                                               self.version.major == version.major and
+                                               self.version.minor == version.minor and
+                                               self.version.patch == version.patch)])
+            if pre_release_versions:
+                return pre_release_versions[-1]
+            return None
+
+        # Group the commits by relevant pre-release version.
+        commits_by_pre_release = group(reversed(self.changes), relevant_pre_release_version)
+        if commits_by_pre_release and commits_by_pre_release[-1].identifier is not None:
+            pre_release = commits_by_pre_release[-1].identifier.pre_release
+            pre_release.bump()  # TODO: This is probably not safe.
+            self.version.pre_release = pre_release
+        else:
+            self.version.pre_release = PreRelease(name=pre_release_prefix, version=0)
+
 
     @property
     def is_empty(self):
@@ -263,11 +372,19 @@ class Section(object):
 
 class History(object):
 
-    def __init__(self, path, scope=None, history=None, skip_unreleased=False):
+    def __init__(self,
+                 path,
+                 scope=None,
+                 history=None,
+                 skip_unreleased=False,
+                 pre_release=False,
+                 pre_release_prefix="rc"):
         self.path = os.path.abspath(path)
         self.scope = scope
         self.skip_unreleased = skip_unreleased
         self.history = os.path.abspath(history) if history is not None else None
+        self.pre_release = pre_release
+        self.pre_release_prefix = pre_release_prefix
         self._load()
 
     def _load(self):
@@ -284,14 +401,28 @@ class History(object):
             releases = []
             releases.append(Release(None, []))
             for change in all_changes:
-                if change.version is not None:
-                    release = Release(change.version, [], is_released=True)
+
+                # Determine the most relevant version for this commit by filtering all valid version tags.
+                change_version = None
+                change_versions = [version for version in sorted(change.versions) if not version.is_pre_release]
+                if change_versions:
+                    change_version = change_versions[-1]
+
+                # If the commit had a valid version, then it represents the beginning of a release so we create it.
+                if change_version is not None:
+                    release = Release(change_version, [], is_released=True)
                     releases.append(release)
+
+                # Append the change to the latest release (which we might have just created).
                 releases[-1].changes.append(change)
 
             # Fix-up the version number for any un-released current release.
+            # `calculate_version` does all the work to determine the version for the release by applying the releases'
+            # changes to the previous version.
             if releases[0].version is None:
-                releases[0].set_previous_version(releases[1].version if len(releases) > 1 else Version(0, 0, 0))
+                previous_version = releases[1].version if len(releases) > 1 else Version(0, 0, 0)
+                releases[0].calculate_version(previous_version=previous_version,
+                                              pre_release_prefix=self.pre_release_prefix if self.pre_release else None)
 
             # Remove the empty head release if there's already an active release.
             if len(releases) > 1 and releases[0].is_empty:
@@ -361,26 +492,36 @@ class UnknownScope(ValueError):
     pass
 
 
+# TODO: Perhaps the tag and the version need to be implemented differently???
+
+# TODO: Consider allowing all scopes and then filtering after the fact.
 def parse_version(tag, scope=None):
-    sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)$")
+    sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)(-([A-Za-z]+)(\.(\d+))?)?$")
     match = sv_parser.match(tag)
     if match:
         tag_scope = match.group(2)
+        tag_pre_release_prefix = match.group(7)
         if tag_scope != scope:
             raise UnknownScope("'%s' contains unknown scope." % tag)
+        pre_release = None
+        if tag_pre_release_prefix is not None:
+            tag_pre_release_version = int(match.group(9)) if match.group(9) is not None else 0
+            pre_release = PreRelease(tag_pre_release_prefix, tag_pre_release_version)
         return Version(major=int(match.group(3)),
                        minor=int(match.group(4)),
-                       patch=int(match.group(5)))
+                       patch=int(match.group(5)),
+                       pre_release=pre_release)
     raise ValueError("'%s' is not a valid version." % tag)
 
 
 def version_from_tags(tags, scope=None):
+    versions = []
     for tag in tags:
         try:
-            return parse_version(tag, scope)
+            versions.append(parse_version(tag, scope))
         except ValueError:
             pass
-    return None
+    return versions
 
 
 def get_commits(scope=None):
@@ -459,9 +600,15 @@ def resolve_scope(options):
 @cli.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
+    cli.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
+    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
 ])
 def command_version(options):
-    history = History(path=os.getcwd(), scope=resolve_scope(options), skip_unreleased=options.released)
+    history = History(path=os.getcwd(),
+                      scope=resolve_scope(options),
+                      skip_unreleased=options.released,
+                      pre_release=options.pre_release,
+                      pre_release_prefix=options.pre_release_prefix)
     print(history.releases[0].version)
 
 

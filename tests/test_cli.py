@@ -111,6 +111,32 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["--scope", "a", "version"]), "1.0.0\n")
             self.assertEqual(repository.changes(["--scope", "b", "version"]), "0.0.0\n")
 
+    def test_version_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.0.0"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "1.0.0\n")
+            self.assertEqual(repository.changes(["version", "--pre-release"]), "1.0.0\n")
+            repository.perform([
+                EmptyCommit("feat: this feat should update the minor version and pre-release version"),
+                EmptyCommit("feat: this feat should not update the minor version or pre-release version"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "1.1.0\n")
+            self.assertEqual(repository.changes(["version", "--pre-release"]), "1.1.0-rc\n")
+            self.assertEqual(repository.changes(["version", "--pre-release", "--pre-release-prefix", "alpha"]), "1.1.0-alpha\n")
+            repository.perform([
+                Tag("1.1.0-rc"),
+                EmptyCommit("feat: this feat should not update the minor version but should update the commited pre-release version"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "1.1.0\n")
+            self.assertEqual(repository.changes(["version", "--pre-release"]), "1.1.0-rc.1\n")
+            self.assertEqual(repository.changes(["version", "--pre-release", "--pre-release-prefix", "alpha"]), "1.1.0-alpha\n")
+            # TODO: Test current version.
+            # TODO: Test additive changes.
+            # TODO: Test resetting changes.
+
     def test_version_on_clone(self):
         with Repository() as remote, tempfile.TemporaryDirectory() as temporary_directory:
             remote.perform([
