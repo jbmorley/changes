@@ -326,8 +326,8 @@ class Release(object):
         # Group the commits by version, filtered to match just our current version and requested pre-release prefix.
         commits_by_pre_release = group(reversed(self.changes), relevant_pre_release_version)
         if commits_by_pre_release and commits_by_pre_release[-1].identifier is not None:
-            pre_release = commits_by_pre_release[-1].identifier.pre_release
-            pre_release.bump()  # TODO: This is probably not safe.
+            pre_release = copy.deepcopy(commits_by_pre_release[-1].identifier.pre_release)
+            pre_release.bump()
             self.version.pre_release = pre_release
         else:
             self.version.pre_release = PreRelease(prefix=pre_release_prefix)
