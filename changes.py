@@ -96,11 +96,10 @@ class Chdir(object):
         os.chdir(self.pwd)
 
 
-# TODO: Rename name to prefix?
 class PreRelease(object):
 
-    def __init__(self, name, version=0):
-        self.name = name
+    def __init__(self, prefix, version=0):
+        self.prefix = prefix
         self.version = version
         self._did_update = False
 
@@ -112,13 +111,13 @@ class PreRelease(object):
 
     def __str__(self):
         if self.version:
-            return f"{self.name}.{self.version}"
-        return self.name
+            return f"{self.prefix}.{self.version}"
+        return self.prefix
 
     def __eq__(self, other):
         if not isinstance(other, PreRelease):
             return False
-        if self.name != other.name:
+        if self.prefix != other.prefix:
             return False
         if self.version != other.version:
             return False
@@ -313,17 +312,10 @@ class Release(object):
         if pre_release_prefix is None:
             return
 
-        # TODO: Only do this is we're in a pre-release scenario.
-        # Check to see if there's a pre-release version that corresponds with our MAJOR.MINOR.PATCH version. If there is
-        # we use this pre-release component and increment it. Otherwise, we create a new pre-release with the requested
-        # prefix.
-        # TODO: We also need to double-check the scope?? Or is the scope already being filtered out at the moment.
-        # TODO: Write tests for multiple pre-releases with scopes and different versions!
-
         def relevant_pre_release_version(commit):
             pre_release_versions = sorted([version for version in commit.versions
                                            if (version.is_pre_release and
-                                               version.pre_release.name == pre_release_prefix and
+                                               version.pre_release.prefix == pre_release_prefix and
                                                self.version.major == version.major and
                                                self.version.minor == version.minor and
                                                self.version.patch == version.patch)])
@@ -331,14 +323,14 @@ class Release(object):
                 return pre_release_versions[-1]
             return None
 
-        # Group the commits by relevant pre-release version.
+        # Group the commits by version, filtered to match just our current version and requested pre-release prefix.
         commits_by_pre_release = group(reversed(self.changes), relevant_pre_release_version)
         if commits_by_pre_release and commits_by_pre_release[-1].identifier is not None:
             pre_release = commits_by_pre_release[-1].identifier.pre_release
             pre_release.bump()  # TODO: This is probably not safe.
             self.version.pre_release = pre_release
         else:
-            self.version.pre_release = PreRelease(name=pre_release_prefix)
+            self.version.pre_release = PreRelease(prefix=pre_release_prefix)
 
 
     @property

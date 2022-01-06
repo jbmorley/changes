@@ -34,6 +34,7 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: Test current version.
 # TODO: Test additive changes.
 # TODO: Test resetting changes.
+# TODO: Write tests for multiple pre-releases with scopes and different versions!
 
 class CLITestCase(unittest.TestCase):
 
