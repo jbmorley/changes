@@ -37,7 +37,7 @@ class VersionTestCase(unittest.TestCase):
         self.assertEqual(str(Version()), "0.0.0")
         self.assertEqual(str(Version(0, 1, 1)), "0.1.1")
         self.assertEqual(str(Version(2, 10, 5)), "2.10.5")
-        self.assertEqual(str(Version(1, 0, 0, PreRelease("rc"))), "1.0.0")
+        self.assertEqual(str(Version(1, 0, 0, PreRelease("rc"))), "1.0.0-rc")
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 0))), "1.0.0-rc")
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 3))), "1.0.0-rc.3")
 
@@ -56,13 +56,20 @@ class VersionTestCase(unittest.TestCase):
     def test_comparators(self):
 
         # Equals.
+
         self.assertEqual(Version(), Version())
         self.assertEqual(Version(1, 10, 5), Version(1, 10, 5))
         self.assertNotEqual(Version(1, 10, 5), Version(2, 10, 5))
         self.assertNotEqual(Version(1, 10, 5), Version(1, 11, 5))
         self.assertNotEqual(Version(1, 10, 5), Version(1, 10, 10))
+        self.assertEqual(Version(pre_release=PreRelease("rc", 0)), Version(pre_release=PreRelease("rc", 0)))
+        self.assertEqual(Version(20, 2, 10, PreRelease("rc", 0)), Version(20, 2, 10, PreRelease("rc", 0)))
+        self.assertNotEqual(Version(20, 2, 10, PreRelease("rc", 0)), Version(20, 2, 10, PreRelease("alpha", 0)))
+        self.assertNotEqual(Version(20, 2, 10, PreRelease("rc", 0)), Version(20, 2, 10, PreRelease("rc", 10)))
+        self.assertNotEqual(Version(), Version(pre_release=PreRelease("rc", 0)))
 
         # Less-than.
+
         self.assertFalse(Version() < Version())
         self.assertTrue(Version() < Version(0, 1, 4))
         self.assertTrue(Version(1, 0, 0) < Version(2, 0, 0))
@@ -92,6 +99,7 @@ class VersionTestCase(unittest.TestCase):
     def test_from_string_unknown_scope(self):
         with self.assertRaises(changes.UnknownScope):
             Version.from_string("1.3.4", strip_scope="macOS")
+
 
     def test_sort(self):
         input = [
@@ -129,7 +137,7 @@ class VersionTestCase(unittest.TestCase):
         self.assertFalse(Version(1, 0, 0).is_pre_release)
         self.assertFalse(Version(200, 1, 0).is_pre_release)
         self.assertFalse(Version(2, 0, 10).is_pre_release)
-        self.assertFalse(Version(1, 0, 0, PreRelease("rc")).is_pre_release)
+        self.assertTrue(Version(1, 0, 0, PreRelease("rc")).is_pre_release)
         self.assertTrue(Version(1, 0, 0, PreRelease("rc", 0)).is_pre_release)
         self.assertTrue(Version(1, 0, 0, PreRelease("rc", 3)).is_pre_release)
 
@@ -168,35 +176,12 @@ class VersionTestCase(unittest.TestCase):
         version.bump_patch()
         self.assertEqual(str(version), "2.0.0")
 
-        version = Version(2, 1, 0, PreRelease("alpha", 0))
-        self.assertEqual(str(version), "2.1.0-alpha")
-        version.bump_major()
-        self.assertEqual(str(version), "3.0.0-alpha.1")
-        version.bump_major()
-        self.assertEqual(str(version), "3.0.0-alpha.1")
-
-        version = Version(2, 1, 0, PreRelease("alpha", 0))
-        self.assertEqual(str(version), "2.1.0-alpha")
-        version.bump_minor()
-        self.assertEqual(str(version), "2.2.0-alpha.1")
-        version.bump_minor()
-        self.assertEqual(str(version), "2.2.0-alpha.1")
-
-        version = Version(2, 1, 0, PreRelease("alpha", 0))
-        self.assertEqual(str(version), "2.1.0-alpha")
-        version.bump_patch()
-        self.assertEqual(str(version), "2.1.1-alpha.1")
-        version.bump_patch()
-        self.assertEqual(str(version), "2.1.1-alpha.1")
-
-        version = Version(2, 1, 0, PreRelease("rc", 4))
-        self.assertEqual(str(version), "2.1.0-rc.4")
-        version.bump_patch()
-        self.assertEqual(str(version), "2.1.1-rc.5")
-        version.bump_patch()
-        self.assertEqual(str(version), "2.1.1-rc.5")
-
-        # TODO: Perhaps bumping the versions should cause a bump in the RC iff there's a change.
+        with self.assertRaises(AssertionError):
+            Version(2, 1, 0, PreRelease("alpha", 0)).bump_major()
+        with self.assertRaises(AssertionError):
+            Version(2, 1, 0, PreRelease("alpha", 0)).bump_minor()
+        with self.assertRaises(AssertionError):
+            Version(2, 1, 0, PreRelease("alpha", 0)).bump_patch()
 
 
         # TODO: Double check the behaviour of versions which are allowed to be pre-release but don't include changes.

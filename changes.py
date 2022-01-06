@@ -96,10 +96,10 @@ class Chdir(object):
         os.chdir(self.pwd)
 
 
-# TODO: Rename this?
+# TODO: Rename name to prefix?
 class PreRelease(object):
 
-    def __init__(self, name, version=None):
+    def __init__(self, name, version=0):
         self.name = name
         self.version = version
         self._did_update = False
@@ -108,24 +108,25 @@ class PreRelease(object):
         if self._did_update:
             return
         self._did_update = True
-        if self.version is None:
-            self.version = 0
-        else:
-            self.version = self.version + 1
-
-    @property
-    def is_active(self):
-        return self.version is not None
+        self.version = self.version + 1
 
     def __str__(self):
         if self.version:
             return f"{self.name}.{self.version}"
         return self.name
 
+    def __eq__(self, other):
+        if not isinstance(other, PreRelease):
+            return False
+        if self.name != other.name:
+            return False
+        if self.version != other.version:
+            return False
+        return True
+
 
 class Version(object):
 
-    # TODO: Only support one pre_release component for the time being.
     def __init__(self, major=0, minor=0, patch=0, pre_release=None):
         self.major = major
         self.minor = minor
@@ -136,7 +137,7 @@ class Version(object):
         self._did_update_patch = False
 
     def bump_major(self):
-        self._bump_pre_release()
+        assert self.pre_release is None, "Version bumps are not supported for pre-release versions."
         if self._did_update_major:
             return
         self.major = self.major + 1
@@ -145,7 +146,7 @@ class Version(object):
         self._did_update_major = True
 
     def bump_minor(self):
-        self._bump_pre_release()
+        assert self.pre_release is None, "Version bumps are not supported for pre-release versions."
         if self._did_update_minor or self._did_update_major:
             return
         self.minor = self.minor + 1
@@ -153,19 +154,11 @@ class Version(object):
         self._did_update_minor = True
 
     def bump_patch(self):
-        self._bump_pre_release()
+        assert self.pre_release is None, "Version bumps are not supported for pre-release versions."
         if self._did_update_patch or self._did_update_minor or self._did_update_major:
             return
         self.patch = self.patch + 1
         self._did_update_patch = True
-
-    def _bump_pre_release(self):
-        """
-        Bumps the version pre-release component (if there is one).
-        """
-        if self.pre_release is None:
-            return
-        self.pre_release.bump()
 
     @property
     def initial_development(self):
@@ -175,7 +168,7 @@ class Version(object):
 
     @property
     def is_pre_release(self):
-        return self.pre_release is not None and self.pre_release.is_active
+        return self.pre_release is not None
 
     def __str__(self):
         if self.is_pre_release:
@@ -190,6 +183,8 @@ class Version(object):
         if self.minor != other.minor:
             return False
         if self.patch != other.patch:
+            return False
+        if self.pre_release != other.pre_release:
             return False
         return True
 
@@ -298,8 +293,10 @@ class Release(object):
     def calculate_version(self, previous_version, pre_release_prefix=None):
         """Recomputes the current version based on the previous version by applying the changes in order."""
 
-        # Copy the previous version, and check to see if we need to permit pre-releases.
-        # TODO: Do we really need to manage pre-releases in this way?
+        # Copy the previous version so we can update it, accounting for the changes in this release.
+        if previous_version.is_pre_release:
+            raise AssertionError("Incorrectly created a relese with a pre-release verison (%s)." % (previous_version, ))
+
         self.version = copy.deepcopy(previous_version)
 
         # Iterate over all the changes that are in this release and determine the version number.
@@ -341,7 +338,7 @@ class Release(object):
             pre_release.bump()  # TODO: This is probably not safe.
             self.version.pre_release = pre_release
         else:
-            self.version.pre_release = PreRelease(name=pre_release_prefix, version=0)
+            self.version.pre_release = PreRelease(name=pre_release_prefix)
 
 
     @property

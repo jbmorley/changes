@@ -31,6 +31,10 @@ import common
 from common import Commit, EmptyCommit, Release, Repository, Tag
 
 
+# TODO: Test current version.
+# TODO: Test additive changes.
+# TODO: Test resetting changes.
+
 class CLITestCase(unittest.TestCase):
 
     def test_version_raw_output(self):
@@ -133,9 +137,6 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["version"]), "1.1.0\n")
             self.assertEqual(repository.changes(["version", "--pre-release"]), "1.1.0-rc.1\n")
             self.assertEqual(repository.changes(["version", "--pre-release", "--pre-release-prefix", "alpha"]), "1.1.0-alpha\n")
-            # TODO: Test current version.
-            # TODO: Test additive changes.
-            # TODO: Test resetting changes.
 
     def test_version_on_clone(self):
         with Repository() as remote, tempfile.TemporaryDirectory() as temporary_directory:
