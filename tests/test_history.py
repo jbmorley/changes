@@ -28,9 +28,9 @@ import changes
 
 from changes import Change, History, Message, Type, Version
 
-from . import common
+import common
 
-from .common import EmptyCommit, Repository, Tag
+from common import EmptyCommit, Repository, Tag
 
 
 class HistoryTestCase(unittest.TestCase):

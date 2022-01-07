@@ -46,9 +46,9 @@ do
 done
 set -- "${POSITIONAL[@]:-}" # restore positional parameters
 
-cd "$ROOT_DIRECTORY"
+cd "$TESTS_DIRECTORY"
 if [[ ! -z "$1" ]] ; then
-    PIPENV_PIPFILE="${ROOT_DIRECTORY}/Pipfile" pipenv run python3 -m unittest "tests.$1"
+    PIPENV_PIPFILE="${ROOT_DIRECTORY}/Pipfile" pipenv run python3 -m unittest "$1" --verbose
 else
-    PIPENV_PIPFILE="${ROOT_DIRECTORY}/Pipfile" pipenv run python3 -m unittest discover --verbose tests
+    PIPENV_PIPFILE="${ROOT_DIRECTORY}/Pipfile" pipenv run python3 -m unittest discover --verbose
 fi

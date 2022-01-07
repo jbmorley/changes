@@ -28,7 +28,7 @@ import changes
 
 from changes import PreRelease, Version
 
-from . import common
+import common
 
 
 class VersionTestCase(unittest.TestCase):

@@ -224,9 +224,12 @@ class Version(object):
     def __hash__(self):
         return str(self).__hash__()
 
+    def __repr__(self):
+        return "Version(major=%r, minor=%r, patch=%r, pre_release=%r)" % (self.major, self.minor, self.patch, self.pre_release)
+
     @classmethod
     def from_string(self, string, strip_scope=None):
-        return parse_version(string, scope=strip_scope)
+        return parse_version_tag(string, scope=strip_scope)
 
 
 class Change(object):
@@ -489,11 +492,13 @@ def run(command, dry_run=False):
 def is_shallow():
     return run(["git", "rev-parse", "--is-shallow-repository"])[0] == "true"
 
-def get_tags(sha):
-    try:
-        return run(["git", "describe", "--tags", "--exact-match", sha])
-    except subprocess.CalledProcessError:
-        return []
+
+def get_tags():
+    tags = collections.defaultdict(list)
+    for tag in [tag for tag in run(["git", "tag"]) if tag]:
+        sha = run(["git", "rev-list", "-n", "1", "tags/%s" % (tag, )])[0]
+        tags[sha].append(tag)
+    return tags
 
 
 class UnknownScope(ValueError):
@@ -501,9 +506,8 @@ class UnknownScope(ValueError):
 
 
 # TODO: Perhaps the tag and the version need to be implemented differently???
-
 # TODO: Consider allowing all scopes and then filtering after the fact.
-def parse_version(tag, scope=None):
+def parse_version_tag(tag, scope=None):
     sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)(-([A-Za-z]+)(\.(\d+))?)?$")
     match = sv_parser.match(tag)
     if match:
@@ -522,21 +526,28 @@ def parse_version(tag, scope=None):
     raise ValueError("'%s' is not a valid version." % tag)
 
 
-def version_from_tags(tags, scope=None):
+def versions_from_tags(tags, scope=None):
     versions = []
     for tag in tags:
         try:
-            versions.append(parse_version(tag, scope))
+            versions.append(parse_version_tag(tag, scope))
         except ValueError:
             pass
     return versions
 
 
 def get_commits(scope=None):
+
     # Guard against empty repositories.
     count = int(run(["git", "rev-list", "--all", "--count"])[0])
     if count < 1:
         return []
+
+    # Load the tags and versions.
+    tags = get_tags()
+    versions = collections.defaultdict(list)
+    for sha, sha_tags in tags.items():
+        versions[sha] = versions_from_tags(sha_tags, scope=scope)
 
     results = []
     command = ["git", "log", "--pretty=format:%H:%s"]
@@ -547,8 +558,7 @@ def get_commits(scope=None):
         exit(1)
     for c in commits:
         sha, message = c.split(":", 1)
-        tags = get_tags(sha)
-        commit = Commit(sha, parse_message(message), tags, version_from_tags(tags, scope))
+        commit = Commit(sha, parse_message(message), tags[sha], versions[sha])
         results.append(commit)
     return results
 

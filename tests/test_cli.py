@@ -27,9 +27,9 @@ import sys
 import tempfile
 import unittest
 
-from . import common
+import common
 
-from .common import Commit, EmptyCommit, Release, Repository, Tag
+from common import Commit, EmptyCommit, Release, Repository, Tag
 
 
 # TODO: Test current version.
@@ -125,8 +125,6 @@ class CLITestCase(unittest.TestCase):
                 Tag("fromage"),
             ])
             self.assertEqual(repository.changes(["version"]), "1.0.0\n")
-
-    def test_version_multiple_tags_unknown_first(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -134,6 +132,22 @@ class CLITestCase(unittest.TestCase):
                 Tag("1.1.1"),
             ])
             self.assertEqual(repository.changes(["version"]), "1.1.1\n")
+
+    def test_multiple_tags_picks_highest_version(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("2.0.0"),
+                Tag("1.5.7"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "2.0.0\n")
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit"),
+                Tag("1.5.7"),
+                Tag("2.0.0"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "2.0.0\n")
 
     def test_version_pre_release(self):
         with Repository() as repository:
