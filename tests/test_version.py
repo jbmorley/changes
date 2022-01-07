@@ -24,11 +24,11 @@ import os
 import subprocess
 import unittest
 
-import common
-
 import changes
 
 from changes import PreRelease, Version
+
+from . import common
 
 
 class VersionTestCase(unittest.TestCase):
@@ -52,6 +52,7 @@ class VersionTestCase(unittest.TestCase):
     #       Perhaps we should only import the pre-release versions iff we're running in pre-release mode and they
     #       match the current tag?
     # TODO: What should the release notes look like?
+    # TODO: Implement the release tool command
 
     def test_comparators(self):
 

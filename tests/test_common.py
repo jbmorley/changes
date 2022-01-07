@@ -24,9 +24,9 @@ import os
 import subprocess
 import unittest
 
-import common
+from . import common
 
-from common import Commit, EmptyCommit, Release, Repository, Tag
+from .common import Commit, EmptyCommit, Release, Repository, Tag
 
 
 class CommonTestCase(unittest.TestCase):

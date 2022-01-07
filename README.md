@@ -35,3 +35,10 @@ Run tests locally using the `test.sh` script:
 ```bash
 ./scripts/test.sh
 ```
+
+You can run a specific test by specifying the test class on the command line:
+
+```bash
+./scripts/test.sh CLITestCase.test_version_multiple_changes_yield_single_increment
+```
+

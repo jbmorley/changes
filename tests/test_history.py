@@ -24,12 +24,13 @@ import os
 import subprocess
 import unittest
 
-import common
-
 import changes
 
 from changes import Change, History, Message, Type, Version
-from common import EmptyCommit, Repository, Tag
+
+from . import common
+
+from .common import EmptyCommit, Repository, Tag
 
 
 class HistoryTestCase(unittest.TestCase):
