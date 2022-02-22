@@ -763,6 +763,16 @@ fi
 - Initial commit
 """)
 
+    def test_notes_released_ignores_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(pre_release=True),
+            ])
+            self.assertEqual(repository.changes(["notes", "--all", "--released"]), "\n")
+
+    # TODO: test_notes_released_including_pre_release
+
     def test_notes_template(self):
         with Repository() as repository:
             repository.perform([

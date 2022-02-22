@@ -24,11 +24,11 @@ import os
 import subprocess
 import unittest
 
+import common
+
 import changes
 
 from changes import PreRelease, Version
-
-import common
 
 
 class VersionTestCase(unittest.TestCase):
@@ -89,6 +89,7 @@ class VersionTestCase(unittest.TestCase):
         self.assertFalse(Version.from_string("1.0.0-rc.3") < Version.from_string("1.0.0-rc"))
         self.assertTrue(Version.from_string("1.0.0-rc.2") < Version.from_string("1.0.0-rc.3"))
         self.assertFalse(Version.from_string("1.0.0-rc.3") < Version.from_string("1.0.0-rc.2"))
+        self.assertTrue(Version.from_string("0.2.2") < Version.from_string("0.2.3-rc"))
 
     def test_from_string(self):
         self.assertEqual(Version.from_string("1.5.7"), Version(1, 5, 7))

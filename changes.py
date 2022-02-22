@@ -213,6 +213,8 @@ class Version(object):
             return True
         if self.patch > other.patch:
             return False
+        if self.patch < other.patch:
+            return True
         if self.pre_release is None and other.pre_release is not None:
             return False
         if self.pre_release is not None and other.pre_release is None:
@@ -483,10 +485,17 @@ class History(object):
             releases = list(sorted(releases_by_version.values(),
                                    key=lambda release: release.version, reverse=True))
 
-            if self.skip_unreleased:
-                self.releases = [release for release in releases if release.is_released]
-            else:
-                self.releases = releases
+            # Filter the releases to match our requested state.
+
+            # Filter unreleased versions
+            releases = [release for release in releases
+                        if release.is_released or not self.skip_unreleased]
+
+            # Filter pre-releases
+            releases = [release for release in releases
+                        if not release.is_pre_release or self.pre_release]
+
+            self.releases = releases
 
 
 def load_history(path, scope=None):
@@ -793,6 +802,8 @@ class AbsolutePathLoader(jinja2.BaseLoader):
     cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
     cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
     cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
+    cli.Argument("--pre-release", action="store_true", default=False, help="include pre-release versions"),
+    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
     cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
     cli.Argument("--template", help="custom Jinja2 template")
 ])
@@ -800,7 +811,9 @@ def command_notes(options):
     history = History(path=os.getcwd(),
                       history=options.history,
                       scope=resolve_scope(options),
-                      skip_unreleased=options.released)
+                      skip_unreleased=options.released,
+                      pre_release=options.pre_release,
+                      pre_release_prefix=options.pre_release_prefix)
 
     if options.template is not None:
         template = os.path.abspath(options.template)
