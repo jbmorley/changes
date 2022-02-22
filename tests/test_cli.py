@@ -785,6 +785,8 @@ fi
 - Initial commit
 """)
 
+    # TODO: Test overlapping pre-release release notes.
+
     def test_notes_template(self):
         with Repository() as repository:
             repository.perform([
