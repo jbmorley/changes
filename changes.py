@@ -225,7 +225,10 @@ class Version(object):
         return str(self).__hash__()
 
     def __repr__(self):
-        return "Version(major=%r, minor=%r, patch=%r, pre_release=%r)" % (self.major, self.minor, self.patch, self.pre_release)
+        return "Version(major=%r, minor=%r, patch=%r, pre_release=%r)" % (self.major,
+                                                                          self.minor,
+                                                                          self.patch,
+                                                                          self.pre_release)
 
     @classmethod
     def from_string(self, string, strip_scope=None):
@@ -310,15 +313,14 @@ class Release(object):
         self.changes = changes
         self.is_released = is_released
 
-    # TODO: Maybe it's better to update the previous version to allow pre-releases?
-    def calculate_version(self, previous_version, pre_release_prefix=None):
+    def calculate_version(self, previous_released_version, pre_release_prefix=None):
         """Recomputes the current version based on the previous version by applying the changes in order."""
 
         # Copy the previous version so we can update it, accounting for the changes in this release.
-        if previous_version.is_pre_release:
-            raise AssertionError("Incorrectly created a relese with a pre-release verison (%s)." % (previous_version, ))
+        if previous_released_version.is_pre_release:
+            raise AssertionError("Incorrectly created a relese with a pre-release verison (%s)." % (previous_released_version, ))
 
-        self.version = copy.deepcopy(previous_version)
+        self.version = copy.deepcopy(previous_released_version)
 
         # Iterate over all the changes that are in this release and determine the version number.
         for commit in reversed(self.changes):
@@ -354,13 +356,16 @@ class Release(object):
         else:
             self.version.pre_release = PreRelease(prefix=pre_release_prefix)
 
-
     @property
     def is_empty(self):
         for change in self.changes:
             if OPERATIONS[change.message.type] is not None:
                 return False
         return True
+
+    @property
+    def is_pre_release(self):
+        return self.version.is_pre_release
 
     def merge(self, release):
         self.changes.extend(release.changes)
@@ -409,30 +414,57 @@ class History(object):
             all_changes = get_commits(scope=self.scope)
 
             # Group the changes by release.
+            # We create an empty head release to absorb all the changes that don't yet have versions.
             releases = []
             releases.append(Release(None, []))
+
+            # Releases currently being processed by the loop.
+            current_releases = [releases[-1]]
+
+            # Iterate over the changes, most recent first.
             for change in all_changes:
 
-                # Determine the most relevant version for this commit by filtering all valid version tags.
-                change_version = None
-                change_versions = [version for version in sorted(change.versions) if not version.is_pre_release]
-                if change_versions:
-                    change_version = change_versions[-1]
+                # Iterate over all the relevant version tags (highest version first) on this change and update the
+                # current set of releases accordingly.
+                change_versions = [version for version in reversed(sorted(change.versions))
+                                   if not version.is_pre_release or version.pre_release.prefix == self.pre_release_prefix]
+                for change_version in change_versions:
 
-                # If the commit had a valid version, then it represents the beginning of a release so we create it.
-                if change_version is not None:
+                    # This method is pretty magical as it's the way by which we determine how the changes we see affect
+                    # the current set of releases we're dropping changes into as we go through the changes in reverse
+                    # chronological order.
+                    # In essence, pre-release versions should never affect the active set as pre-release versions are
+                    # intentionally overlapping (they collect all changes since the last release version), while
+                    # release versions will always displace releases that came after them (including pre-releases).
+                    # The only place where this differs is that pre-release versions are allowed to replace _empty_
+                    # unreleased versions. This is, in many ways a side effect of a poorly designed loop; we probably
+                    # shouldn't insert an empty release until we need one, then we wouldn't need this magic.
+                    def version_replaces_release(version, release):
+                        if version.is_pre_release:
+                            return release.version is None and release.is_empty and self.pre_release
+                        return release.version is None or release.version > version
+
+                    # Update the active set of releases.
+                    current_releases = [release for release in current_releases
+                                        if not version_replaces_release(change_version, release)]
+
+                    # Create a new release for the current change.
                     release = Release(change_version, [], is_released=True)
                     releases.append(release)
+                    current_releases.append(release)
 
                 # Append the change to the latest release (which we might have just created).
-                releases[-1].changes.append(change)
+                for release in current_releases:
+                    release.changes.append(change)
 
             # Fix-up the version number for any un-released current release.
             # `calculate_version` does all the work to determine the version for the release by applying the releases'
             # changes to the previous version.
             if releases[0].version is None:
-                previous_version = releases[1].version if len(releases) > 1 else Version(0, 0, 0)
-                releases[0].calculate_version(previous_version=previous_version,
+                # Pass in the previous _released_ version.
+                released_versions = [release.version for release in releases[1:] if not release.is_pre_release]
+                previous_released_version = released_versions[0] if len(released_versions) > 0 else Version(0, 0, 0)
+                releases[0].calculate_version(previous_released_version=previous_released_version,
                                               pre_release_prefix=self.pre_release_prefix if self.pre_release else None)
 
             # Remove the empty head release if there's already an active release.
@@ -638,7 +670,9 @@ def command_version(options):
     cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
     cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
     cli.Argument("--template", help="custom Jinja2 template"),
-    cli.Argument("arguments", nargs="*", help="arguments to pass to the release command")
+    cli.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
+    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
+    cli.Argument("arguments", nargs="*", help="arguments to pass to the release command"),
 ], epilog="""
 When calling a script specified by `--command` or `--exec`, Changes defines a number of environment variables:
 
@@ -656,7 +690,10 @@ def command_release(options):
         exit(1)
 
     scope = resolve_scope(options)
-    history = History(path=os.getcwd(), scope=scope)
+    history = History(path=os.getcwd(),
+                      scope=scope,
+                      pre_release=options.pre_release,
+                      pre_release_prefix=options.pre_release_prefix)
     releases = history.releases
     if releases[0].is_released or releases[0].is_empty:
         # There aren't any unreleased versions.

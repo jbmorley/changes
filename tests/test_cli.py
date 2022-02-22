@@ -262,6 +262,16 @@ class CLITestCase(unittest.TestCase):
             repository.changes(["release"])
             self.assertEqual(repository.tag(), ["0.1.0"])
 
+    def test_release_tag_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            repository.changes(["release", "--pre-release"])
+            self.assertEqual(repository.tag(), ["0.1.0-rc"])
+            repository.changes(["release"])
+            self.assertEqual(repository.tag(), ["0.1.0", "0.1.0-rc"])
+
     def test_release_tag_push(self):
         with Repository() as repository, Repository() as remote:
             repository.git(["remote", "add", "origin", remote.path])
@@ -317,6 +327,11 @@ class CLITestCase(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 repository.changes(["release"])
 
+    def test_release_pre_release_fails_empty_repository(self):
+        with Repository() as repository:
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes(["release", "--pre-release"])
+
     def test_release_fails_without_changes(self):
         with Repository() as repository:
             repository.perform([
@@ -325,6 +340,25 @@ class CLITestCase(unittest.TestCase):
             ])
             with self.assertRaises(subprocess.CalledProcessError):
                 repository.changes(["release"])
+
+    # TODO: Test that it fails without changes _after_ another pre-release.
+    def test_release_pre_release_fails_without_changes(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("initial commit with no changes"),
+                Tag("0.1.1")
+            ])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes(["release", "--pre-release"])
+
+    def test_release_pre_release_fails_without_new_changes_following_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: a feature"),
+            ])
+            repository.changes(["release", "--pre-release"])
+            with self.assertRaises(subprocess.CalledProcessError):
+                repository.changes(["release", "--pre-release"])
 
     def test_release_fails_without_changes_or_previous_release(self):
         with Repository() as repository:
