@@ -109,7 +109,6 @@ class VersionTestCase(unittest.TestCase):
         with self.assertRaises(changes.UnknownScope):
             Version.from_string("1.3.4", strip_scope="macOS")
 
-
     def test_sort(self):
         input = [
             "1.2.3",
