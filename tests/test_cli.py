@@ -46,8 +46,6 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: Test release with pre-release prefix
 # TODO: Integrity check the repository to ensure the tags are in a logical order during scan!
 # TODO: Consider —include-pre-release as well as —pre-release?
-# TODO: Test sorting.
-# TODO: Test incrementing.
 # TODO: Test how pre-release version changes carry forwards.
 # TODO: Test parsing.
 # TODO: Test behaviour of a sequence of pre-release versions.
