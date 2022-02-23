@@ -31,11 +31,24 @@ import common
 
 from common import Commit, EmptyCommit, Release, Repository, Tag
 
-
 # TODO: Test current version.
 # TODO: Test additive changes.
 # TODO: Test resetting changes.
 # TODO: Write tests for multiple pre-releases with scopes and different versions!
+# TODO: test version on empty repository
+# TODO: test that multiple pre-release versions increment correctly and result in the same final release
+# TODO: test the correct state is passed to the release commands
+# TODO: test that the release notes are right
+# TODO: test the history back-fill behaviour
+# TODO: check multiple changes in releases
+# TODO: check empty tags
+# TODO: test what happens if there are multiple pre-release tags on the same commit? can we release?
+# TODO: Check the edge case of the last version?
+# TODO: Changes version without the pre-release flag shouldn’t show the pre-relased version ? Unclear? Perhaps there should be a way to show just the pure unadulatated version number
+# TODO: Test release with pre-release prefix
+# TODO: test that the History structure matches the expected history structure?
+# TODO: Integrity check the repository to ensure the tags are in a logical order during scan!
+# TODO: Consider —include-pre-release as well as —pre-release?
 
 class CLITestCase(unittest.TestCase):
 
