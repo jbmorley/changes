@@ -41,19 +41,6 @@ class VersionTestCase(unittest.TestCase):
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 0))), "1.0.0-rc")
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 3))), "1.0.0-rc.3")
 
-    # TODO: Test sorting.
-    # TODO: Test incrementing.
-    # TODO: Test how pre-release version changes carry forwards.
-    # TODO: Test parsing.
-    # TODO: Test behaviour of a sequence of pre-release versions.
-    # TODO: Version should be the same, but there should be pre-release details in the environment.
-    # TODO: Should the title include the pre-release details?
-    # TODO: The version objects imported from a history with pre-release components need to be handled very carefully.
-    #       Perhaps we should only import the pre-release versions iff we're running in pre-release mode and they
-    #       match the current tag?
-    # TODO: What should the release notes look like?
-    # TODO: Implement the release tool command
-
     def test_comparators(self):
 
         # Equals.
