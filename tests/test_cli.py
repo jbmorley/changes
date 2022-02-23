@@ -41,7 +41,6 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: test the history back-fill behaviour
 # TODO: check multiple changes in releases
 # TODO: check empty tags
-# TODO: test what happens if there are multiple pre-release tags on the same commit? can we release?
 # TODO: Check the edge case of the last version?
 # TODO: Changes version without the pre-release flag shouldn’t show the pre-relased version ? Unclear? Perhaps there should be a way to show just the pure unadulatated version number
 # TODO: Test release with pre-release prefix
