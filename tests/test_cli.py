@@ -44,7 +44,6 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: Check the edge case of the last version?
 # TODO: Changes version without the pre-release flag shouldn’t show the pre-relased version ? Unclear? Perhaps there should be a way to show just the pure unadulatated version number
 # TODO: Test release with pre-release prefix
-# TODO: test that the History structure matches the expected history structure?
 # TODO: Integrity check the repository to ensure the tags are in a logical order during scan!
 # TODO: Consider —include-pre-release as well as —pre-release?
 # TODO: Test sorting.
