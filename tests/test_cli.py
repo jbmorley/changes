@@ -55,6 +55,7 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 #       Perhaps we should only import the pre-release versions iff we're running in pre-release mode and they
 #       match the current tag?
 # TODO: What should the release notes look like?
+# TODO: --skip-unreleased doesn't work
 
 class CLITestCase(unittest.TestCase):
 
