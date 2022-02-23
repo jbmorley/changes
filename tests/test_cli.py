@@ -43,7 +43,6 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: check empty tags
 # TODO: Check the edge case of the last version?
 # TODO: Changes version without the pre-release flag shouldn’t show the pre-relased version ? Unclear? Perhaps there should be a way to show just the pure unadulatated version number
-# TODO: Test release with pre-release prefix
 # TODO: Integrity check the repository to ensure the tags are in a logical order during scan!
 # TODO: Consider —include-pre-release as well as —pre-release?
 # TODO: Test how pre-release version changes carry forwards.
@@ -303,6 +302,18 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.tag(), ["0.1.0-rc"])
             repository.changes(["release"])
             self.assertEqual(repository.tag(), ["0.1.0", "0.1.0-rc"])
+
+    def test_release_pre_release_custom_prefix(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature"),
+            ])
+            repository.changes(["release", "--pre-release", "--pre-release-prefix", "beta"])
+            self.assertEqual(repository.tag(), ["0.1.0-beta"])
+            repository.changes(["release", "--pre-release", "--pre-release-prefix", "alpha"])
+            self.assertEqual(repository.tag(), ["0.1.0-alpha", "0.1.0-beta"])
+            repository.changes(["release"])
+            self.assertEqual(repository.tag(), ["0.1.0", "0.1.0-alpha", "0.1.0-beta"])
 
     def test_release_pre_release_multiple_pre_releases(self):
         with Repository() as repository:
