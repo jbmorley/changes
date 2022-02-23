@@ -36,7 +36,6 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: Test resetting changes.
 # TODO: Write tests for multiple pre-releases with scopes and different versions!
 # TODO: test version on empty repository
-# TODO: test that multiple pre-release versions increment correctly and result in the same final release
 # TODO: test the correct state is passed to the release commands
 # TODO: test that the release notes are right
 # TODO: test the history back-fill behaviour
@@ -298,7 +297,7 @@ class CLITestCase(unittest.TestCase):
             repository.changes(["release"])
             self.assertEqual(repository.tag(), ["0.1.0"])
 
-    def test_release_tag_pre_release(self):
+    def test_release_pre_release(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: feature"),
@@ -307,6 +306,21 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.tag(), ["0.1.0-rc"])
             repository.changes(["release"])
             self.assertEqual(repository.tag(), ["0.1.0", "0.1.0-rc"])
+
+    def test_release_pre_release_multiple_pre_releases(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: feature 1"),
+                Release(pre_release=True),
+                EmptyCommit("fix: fix 1"),
+                Release(pre_release=True),
+                EmptyCommit("feat: feature 2"),
+                EmptyCommit("feat: fix 2"),
+                Release(pre_release=True),
+            ])
+            self.assertEqual(repository.tag(), ["0.1.0-rc", "0.1.0-rc.1", "0.1.0-rc.2"])
+            repository.changes(["release"])
+            self.assertEqual(repository.tag(), ["0.1.0", "0.1.0-rc", "0.1.0-rc.1", "0.1.0-rc.2"])
 
     def test_release_tag_push(self):
         with Repository() as repository, Repository() as remote:
