@@ -172,6 +172,18 @@ class CLITestCase(unittest.TestCase):
             self.assertEqual(repository.changes(["version", "--pre-release"]), "1.1.0-rc.1\n")
             self.assertEqual(repository.changes(["version", "--pre-release", "--pre-release-prefix", "alpha"]), "1.1.0-alpha\n")
 
+    def test_version_pre_release_multiple_tags(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat!: initial commit"),
+                Tag("1.0.0-rc"),
+                Tag("1.0.0-rc.1"),
+                Tag("1.0.0-rc.2"),
+                EmptyCommit("fix: Something small"),
+            ])
+            self.assertEqual(repository.changes(["version"]), "1.0.0\n")
+            self.assertEqual(repository.changes(["version", "--pre-release"]), "1.0.0-rc.3\n")
+
     def test_version_on_clone(self):
         with Repository() as remote, tempfile.TemporaryDirectory() as temporary_directory:
             remote.perform([
