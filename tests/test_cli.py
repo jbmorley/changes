@@ -785,7 +785,50 @@ fi
 - Initial commit
 """)
 
+    def test_notes_all_including_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(pre_release=True),
+                EmptyCommit("fix: A fix"),
+            ])
+            self.assertEqual(repository.changes(["notes", "--all", "--pre-release"]),
+"""# 0.1.0-rc.1 (Unreleased)
+
+**Changes**
+
+- Initial commit
+
+**Fixes**
+
+- A fix
+
+# 0.1.0-rc
+
+**Changes**
+
+- Initial commit
+""")
+
+    def test_notes_including_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: Initial commit"),
+                Release(pre_release=True),
+                EmptyCommit("fix: A fix"),
+            ])
+            self.assertEqual(repository.changes(["notes", "--pre-release"]),
+"""**Changes**
+
+- Initial commit
+
+**Fixes**
+
+- A fix
+""")
+
     # TODO: Test overlapping pre-release release notes.
+    # TODO: Test release with pre-release??
 
     def test_notes_template(self):
         with Repository() as repository:
