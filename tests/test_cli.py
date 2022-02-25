@@ -520,29 +520,52 @@ fi
             repository.changes(["release", "--command", script_path])
             self.assertEqual(repository.read_file("output.txt"), "release")
 
-    def test_release_command_environment_title(self):
-        with Repository() as repository:
-            repository.perform([
-                EmptyCommit("feat: New feature"),
-            ])
-            repository.changes(["release", "--command", "echo $CHANGES_TITLE >> output.txt"])
-            self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+    def assertReleaseEvironment(self, repository, key, value, flags=False):
+        """
+        Run the release sub-command and assert that that the value of the environment key matches.
 
-    def test_release_command_environment_tag(self):
+        This relies on the release-rollback in the case of failure to ensure that the release is not actually performed,
+        allowing multiple release commands to be run.
+        """
+        output_path = os.path.join(repository.path, "output.txt")
+        self.assertFalse(os.path.exists(output_path))
+        with self.assertRaises(subprocess.CalledProcessError):
+            command = ["release"]
+            if flags:
+                command += flags
+            command += ["--command", f"echo ${key} >> output.txt; exit 1"]
+            repository.changes(command)
+        self.assertEqual(repository.read_file("output.txt"), value + "\n")
+        os.remove(output_path)
+
+    def test_release_command_environment(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes(["release", "--command", "echo $CHANGES_TAG >> output.txt"])
-            self.assertEqual(repository.read_file("output.txt"), "0.1.0\n")
+            self.assertReleaseEvironment(repository, "CHANGES_TITLE", "0.1.0")
+            self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "0.1.0")
+            self.assertReleaseEvironment(repository, "CHANGES_TAG", "0.1.0")
+            self.assertReleaseEvironment(repository, "CHANGES_INITIAL_DEVELOPMENT", "true")
+            self.assertReleaseEvironment(repository, "CHANGES_PRE_RELEASE", "false")
+
+    def test_release_command_environment_pre_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            self.assertReleaseEvironment(repository, "CHANGES_TITLE", "0.1.0", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "0.1.0 rc", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_TAG", "0.1.0-rc", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_INITIAL_DEVELOPMENT", "true", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_PRE_RELEASE", "true", ["--pre-release"])
 
     def test_release_command_environment_tag_with_scope(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
-            repository.changes(["release", "--scope", "scope", "--command", "echo $CHANGES_TAG >> output.txt"])
-            self.assertEqual(repository.read_file("output.txt"), "scope_0.1.0\n")
+            self.assertReleaseEvironment(repository, "CHANGES_TAG", "scope_0.1.0", ["--scope", "scope"])
 
     def test_release_command_environment_tag_with_scope_legacy_argument(self):
         with Repository() as repository:

@@ -718,9 +718,12 @@ def command_release(options):
     logging.info("Creating tag '%s'...", tag)
     run(["git", "tag", tag], dry_run=options.dry_run)
 
-    title = str(version)
+    title = f"{version.major}.{version.minor}.{version.patch}"
     if scope is not None:
         title = f"{scope} {title}"
+    qualified_title = title
+    if version.is_pre_release:
+        qualified_title = f"{qualified_title} {version.pre_release}"
 
     if options.push:
         logging.info("Pushing tag '%s'...", tag)
@@ -755,8 +758,10 @@ def command_release(options):
             # Set up the environment.
             env = copy.deepcopy(os.environ)
             env['CHANGES_TITLE'] = title
+            env['CHANGES_QUALIFIED_TITLE'] = qualified_title
             env['CHANGES_VERSION'] = str(version)
             env['CHANGES_INITIAL_DEVELOPMENT'] = "true" if version.initial_development else "false"
+            env['CHANGES_PRE_RELEASE'] = "true" if version.is_pre_release else "false"
             env['CHANGES_TAG'] = tag
             env['CHANGES_NOTES'] = notes
             env['CHANGES_NOTES_FILE'] = notes_file.name
