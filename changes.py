@@ -686,8 +686,11 @@ def command_version(options):
 When calling a script specified by `--command` or `--exec`, Changes defines a number of environment variables:
 
   CHANGES_TITLE                a proposed title for the release
-  CHANGES_VERSION              full version number
-  CHANGES_INITIAL_DEVELOPMENT  true if the major version number is less than 0, false otherwise
+  CHANGES_QUALIFIED_TITLE      a proposed title including pre-release version details (if applicable)
+  CHANGES_VERSION              version number
+  CHANGES_QUALIFIED_VERSION    full version number including pre-release version details (if applicable)
+  CHANGES_INITIAL_DEVELOPMENT  true if the major version number is less than 0; false otherwise
+  CHANGES_PRE_RELEASE          true if the release is a pre-release; false otherwise
   CHANGES_TAG                  the Git tag used for the release
   CHANGES_NOTES                the release notes
   CHANGES_NOTES_FILE           path to a file containing the release notes
@@ -759,7 +762,9 @@ def command_release(options):
             env = copy.deepcopy(os.environ)
             env['CHANGES_TITLE'] = title
             env['CHANGES_QUALIFIED_TITLE'] = qualified_title
-            env['CHANGES_VERSION'] = str(version)
+            env['CHANGES_VERSION'] = f"{version.major}.{version.minor}.{version.patch}"
+            env['CHANGES_QUALIFIED_VERSION'] = str(version)
+            env['CHANGES_PRE_RELEASE_VERSION'] = str(version.pre_release) if version.pre_release is not None else ""
             env['CHANGES_INITIAL_DEVELOPMENT'] = "true" if version.initial_development else "false"
             env['CHANGES_PRE_RELEASE'] = "true" if version.is_pre_release else "false"
             env['CHANGES_TAG'] = tag

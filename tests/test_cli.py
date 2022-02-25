@@ -545,6 +545,7 @@ fi
             ])
             self.assertReleaseEvironment(repository, "CHANGES_TITLE", "0.1.0")
             self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "0.1.0")
+            self.assertReleaseEvironment(repository, "CHANGES_VERSION", "0.1.0")
             self.assertReleaseEvironment(repository, "CHANGES_TAG", "0.1.0")
             self.assertReleaseEvironment(repository, "CHANGES_INITIAL_DEVELOPMENT", "true")
             self.assertReleaseEvironment(repository, "CHANGES_PRE_RELEASE", "false")
@@ -556,16 +557,48 @@ fi
             ])
             self.assertReleaseEvironment(repository, "CHANGES_TITLE", "0.1.0", ["--pre-release"])
             self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "0.1.0 rc", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_VERSION", "0.1.0", ["--pre-release"])
             self.assertReleaseEvironment(repository, "CHANGES_TAG", "0.1.0-rc", ["--pre-release"])
             self.assertReleaseEvironment(repository, "CHANGES_INITIAL_DEVELOPMENT", "true", ["--pre-release"])
             self.assertReleaseEvironment(repository, "CHANGES_PRE_RELEASE", "true", ["--pre-release"])
 
-    def test_release_command_environment_tag_with_scope(self):
+    def test_release_command_environment_pre_release_point_release(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+                Release(pre_release=True),
+                EmptyCommit("feat: Second feature"),
+            ])
+            self.assertReleaseEvironment(repository, "CHANGES_TITLE", "0.1.0", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "0.1.0 rc.1", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_VERSION", "0.1.0", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_TAG", "0.1.0-rc.1", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_INITIAL_DEVELOPMENT", "true", ["--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_PRE_RELEASE", "true", ["--pre-release"])
+
+    def test_release_command_environment_scope(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("feat: New feature"),
             ])
+            self.assertReleaseEvironment(repository, "CHANGES_TITLE", "scope 0.1.0", ["--scope", "scope"])
+            self.assertReleaseEvironment(repository, "CHANGES_VERSION", "0.1.0", ["--scope", "scope"])
             self.assertReleaseEvironment(repository, "CHANGES_TAG", "scope_0.1.0", ["--scope", "scope"])
+
+    def test_release_command_environment_pre_release_scope(self):
+        with Repository() as repository:
+            repository.perform([
+                EmptyCommit("feat: New feature"),
+            ])
+            self.assertReleaseEvironment(repository, "CHANGES_TITLE", "scope 0.1.0",
+                                         ["--scope", "scope", "--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_QUALIFIED_TITLE", "scope 0.1.0 rc",
+                                         ["--scope", "scope", "--pre-release"])
+            self.assertReleaseEvironment(repository, "CHANGES_TAG", "scope_0.1.0-rc",
+                                         ["--scope", "scope", "--pre-release"])
+
+    # TODO: Test the pre-release releases with versions.
+    # TODO: Environment variable with the pre-release details.
 
     def test_release_command_environment_tag_with_scope_legacy_argument(self):
         with Repository() as repository:
