@@ -55,6 +55,8 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 #       match the current tag?
 # TODO: What should the release notes look like?
 # TODO: --skip-unreleased doesn't work
+# TODO: Test rollback with pre-releases
+# TODO: Provide separate pre-release prefix and version environment variables in the release command
 
 class CLITestCase(unittest.TestCase):
 
