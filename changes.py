@@ -173,7 +173,7 @@ class Version(object):
         self._did_update_patch = True
 
     @property
-    def initial_development(self):
+    def is_initial_development(self):
         if self.major == 0:
             return True
         return False
@@ -368,6 +368,10 @@ class Release(object):
     @property
     def is_pre_release(self):
         return self.version.is_pre_release
+
+    @property
+    def is_initial_development(self):
+        return self.version.is_initial_development
 
     def merge(self, release):
         self.changes.extend(release.changes)
@@ -765,7 +769,7 @@ def command_release(options):
             env['CHANGES_VERSION'] = f"{version.major}.{version.minor}.{version.patch}"
             env['CHANGES_QUALIFIED_VERSION'] = str(version)
             env['CHANGES_PRE_RELEASE_VERSION'] = str(version.pre_release) if version.pre_release is not None else ""
-            env['CHANGES_INITIAL_DEVELOPMENT'] = "true" if version.initial_development else "false"
+            env['CHANGES_INITIAL_DEVELOPMENT'] = "true" if version.is_initial_development else "false"
             env['CHANGES_PRE_RELEASE'] = "true" if version.is_pre_release else "false"
             env['CHANGES_TAG'] = tag
             env['CHANGES_NOTES'] = notes
