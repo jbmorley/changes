@@ -840,6 +840,13 @@ def command_notes(options):
         print(format_notes(releases=[history.releases[0]], template=template), end="")
 
 
+@cli.command("scopes", help="show all the unique scopes used within the repository")
+def command_scopes(options):
+    scopes = set([commit.message.scope for commit in get_commits() if commit.message.scope is not None])
+    for scope in sorted(scopes):
+      print(scope)
+
+
 DESCRIPTION = """
 
 Lightweight and (hopefully) unopinionated tool for managing Semantic Versioning using Conventional Commits.
