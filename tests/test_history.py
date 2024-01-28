@@ -24,11 +24,12 @@ import os
 import subprocess
 import unittest
 
-import common
-
 import changes
 
 from changes import Change, History, Message, Type, Version
+
+import common
+
 from common import EmptyCommit, Repository, Tag
 
 
@@ -103,6 +104,8 @@ class HistoryTestCase(unittest.TestCase):
 
             releases = changes.load_history(os.path.join(repository.path, "history.yaml"), scope="cheese")
             self.assertEqual(len(releases), 0)
+
+    # TODO: Ensure pre-release versions can come from the history.
 
 
 if __name__ == '__main__':
