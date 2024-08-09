@@ -57,6 +57,10 @@ from common import Commit, EmptyCommit, Release, Repository, Tag
 # TODO: --skip-unreleased doesn't work
 # TODO: Test rollback with pre-releases
 # TODO: Provide separate pre-release prefix and version environment variables in the release command
+# TODO: Double check the behaviour of versions which are allowed to be pre-release but don't include changes.
+# TODO: Test that versions that are marked as 'pre-release' do not render pre-release components without changes
+#       and do render pre-release components with a change.
+
 
 class CLITestCase(unittest.TestCase):
 

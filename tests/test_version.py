@@ -40,11 +40,14 @@ class VersionTestCase(unittest.TestCase):
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc"))), "1.0.0-rc")
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 0))), "1.0.0-rc")
         self.assertEqual(str(Version(1, 0, 0, PreRelease("rc", 3))), "1.0.0-rc.3")
+        self.assertEqual(str(Version(2, 3, 4, PreRelease("candidate", 100), prefix="macOS")), "2.3.4-candidate.100")
+        self.assertEqual(Version(2, 3, 4, PreRelease("candidate", 100), prefix="macOS").qualifiedString(), "macOS_2.3.4-candidate.100")
+        self.assertEqual(str(Version(0, 1, 1, prefix="iOS")), "0.1.1")
+        self.assertEqual(Version(0, 1, 1, prefix="iOS").qualifiedString(), "iOS_0.1.1")
 
     def test_comparators(self):
 
         # Equals.
-
         self.assertEqual(Version(), Version())
         self.assertEqual(Version(1, 10, 5), Version(1, 10, 5))
         self.assertNotEqual(Version(1, 10, 5), Version(2, 10, 5))
@@ -55,9 +58,10 @@ class VersionTestCase(unittest.TestCase):
         self.assertNotEqual(Version(20, 2, 10, PreRelease("rc", 0)), Version(20, 2, 10, PreRelease("alpha", 0)))
         self.assertNotEqual(Version(20, 2, 10, PreRelease("rc", 0)), Version(20, 2, 10, PreRelease("rc", 10)))
         self.assertNotEqual(Version(), Version(pre_release=PreRelease("rc", 0)))
+        self.assertEqual(Version(20, 2, 10, prefix="fromage"), Version(20, 2, 10, prefix="fromage"))
+        self.assertNotEqual(Version(20, 2, 10, prefix="fromage"), Version(20, 2, 10, prefix="cheese"))
 
         # Less-than.
-
         self.assertFalse(Version() < Version())
         self.assertTrue(Version() < Version(0, 1, 4))
         self.assertTrue(Version(1, 0, 0) < Version(2, 0, 0))
@@ -77,25 +81,18 @@ class VersionTestCase(unittest.TestCase):
         self.assertTrue(Version.from_string("1.0.0-rc.2") < Version.from_string("1.0.0-rc.3"))
         self.assertFalse(Version.from_string("1.0.0-rc.3") < Version.from_string("1.0.0-rc.2"))
         self.assertTrue(Version.from_string("0.2.2") < Version.from_string("0.2.3-rc"))
+        self.assertTrue(Version.from_string("alpha_1.0.0") < Version.from_string("beta_1.0.0"))
+        self.assertTrue(Version.from_string("beta_1.0.0") < Version.from_string("gamma_1.0.0"))
+        self.assertFalse(Version.from_string("beta_1.0.0") > Version.from_string("gamma_1.0.0"))
 
     def test_from_string(self):
         self.assertEqual(Version.from_string("1.5.7"), Version(1, 5, 7))
         self.assertEqual(Version.from_string("0.23.0"), Version(0, 23, 0))
         self.assertEqual(Version.from_string("0.0.0"), Version())
-        self.assertEqual(Version.from_string("macOS_1.4.6", strip_scope="macOS"), Version(1, 4, 6))
-
-        with self.assertRaises(ValueError):
-            Version.from_string("macOS_1.4.6", strip_scope="something"), Version(1, 4, 6)
-        with self.assertRaises(ValueError):
-            Version.from_string("macOS_1.4.6"), Version(1, 4, 6)
-
+        self.assertEqual(Version.from_string("macOS_1.4.6"), Version(1, 4, 6, prefix="macOS"))
         self.assertEqual(Version.from_string("1.5.9-rc"), Version(1, 5, 9, PreRelease("rc", 0)))
         self.assertEqual(Version.from_string("1.5.9-rc.0"), Version(1, 5, 9, PreRelease("rc", 0)))
         self.assertEqual(Version.from_string("1.5.9-alpha.34"), Version(1, 5, 9, PreRelease("alpha", 34)))
-
-    def test_from_string_unknown_scope(self):
-        with self.assertRaises(changes.UnknownScope):
-            Version.from_string("1.3.4", strip_scope="macOS")
 
     def test_sort(self):
         input = [
@@ -113,8 +110,26 @@ class VersionTestCase(unittest.TestCase):
             "12.0.6",
         ]
         input_versions = [Version.from_string(string) for string in input]
-        self.assertNotEqual([str(version) for version in input_versions], output)
-        self.assertEqual([str(version) for version in sorted(input_versions)], output)
+        self.assertNotEqual([version.qualifiedString() for version in input_versions], output)
+        self.assertEqual([version.qualifiedString() for version in sorted(input_versions)], output)
+
+        input = [
+            "a_1.2.3",
+            "b_0.0.0",
+            "a_12.0.6",
+            "b_0.1.0",
+            "a_0.0.0",
+        ]
+        output = [
+            "a_0.0.0",
+            "a_1.2.3",
+            "a_12.0.6",
+            "b_0.0.0",
+            "b_0.1.0",
+        ]
+        input_versions = [Version.from_string(string) for string in input]
+        self.assertNotEqual([version.qualifiedString() for version in input_versions], output)
+        self.assertEqual([version.qualifiedString() for version in sorted(input_versions)], output)
 
     def test_initial_development(self):
         self.assertTrue(Version().is_initial_development)
@@ -178,14 +193,6 @@ class VersionTestCase(unittest.TestCase):
             Version(2, 1, 0, PreRelease("alpha", 0)).bump_minor()
         with self.assertRaises(AssertionError):
             Version(2, 1, 0, PreRelease("alpha", 0)).bump_patch()
-
-
-        # TODO: Double check the behaviour of versions which are allowed to be pre-release but don't include changes.
-
-        # TODO: Test that versions that are marked as 'pre-release' do not render pre-release components without changes
-        #       and do render pre-release components with a change.
-        # version = Version(4, 5, 0) + PreRelease("rc", 0)
-
 
 
 if __name__ == '__main__':

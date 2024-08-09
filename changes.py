@@ -139,10 +139,11 @@ class PreRelease(object):
 
 class Version(object):
 
-    def __init__(self, major=0, minor=0, patch=0, pre_release=None):
+    def __init__(self, major=0, minor=0, patch=0, pre_release=None, prefix=None):
         self.major = major
         self.minor = minor
         self.patch = patch
+        self.prefix = prefix
         self.pre_release = pre_release
         self._did_update_major = False
         self._did_update_minor = False
@@ -183,9 +184,16 @@ class Version(object):
         return self.pre_release is not None
 
     def __str__(self):
+        version = f"{self.major}.{self.minor}.{self.patch}"
         if self.is_pre_release:
-            return f"{self.major}.{self.minor}.{self.patch}-{str(self.pre_release)}"
-        return f"{self.major}.{self.minor}.{self.patch}"
+            version = version + f"-{str(self.pre_release)}"
+        return version
+
+    def qualifiedString(self):
+        version = str(self)
+        if self.prefix:
+            version = f"{self.prefix}_" + version
+        return version
 
     def __eq__(self, other):
         if not isinstance(other, Version):
@@ -198,11 +206,17 @@ class Version(object):
             return False
         if self.pre_release != other.pre_release:
             return False
+        if self.prefix != other.prefix:
+            return False
         return True
 
     def __lt__(self, other):
         if self == other:
             return False
+        if ("" if self.prefix is None else self.prefix) > ("" if other.prefix is None else other.prefix):
+            return False
+        if ("" if self.prefix is None else self.prefix) < ("" if other.prefix is None else other.prefix):
+            return True
         if self.major > other.major:
             return False
         if self.major < other.major:
@@ -227,14 +241,29 @@ class Version(object):
         return str(self).__hash__()
 
     def __repr__(self):
-        return "Version(major=%r, minor=%r, patch=%r, pre_release=%r)" % (self.major,
-                                                                          self.minor,
-                                                                          self.patch,
-                                                                          self.pre_release)
+        return "Version(major=%r, minor=%r, patch=%r, pre_release=%r, prefix=%r)" % (self.major,
+                                                                                     self.minor,
+                                                                                     self.patch,
+                                                                                     self.pre_release,
+                                                                                     self.prefix)
 
     @classmethod
     def from_string(self, string, strip_scope=None):
-        return parse_version_tag(string, scope=strip_scope)
+        sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)(-([A-Za-z]+)(\.(\d+))?)?$")
+        match = sv_parser.match(string)
+        if match:
+            prefix = match.group(2)
+            pre_release_prefix = match.group(7)
+            pre_release = None
+            if pre_release_prefix is not None:
+                pre_release_version = int(match.group(9)) if match.group(9) is not None else 0
+                pre_release = PreRelease(pre_release_prefix, pre_release_version)  # TODO: This might be cleaner as a 'sub-version' or similar?
+            return Version(major=int(match.group(3)),
+                           minor=int(match.group(4)),
+                           patch=int(match.group(5)),
+                           pre_release=pre_release,
+                           prefix=prefix)
+        raise ValueError("'%s' is not a valid version." % string)
 
 
 class Change(object):
@@ -480,7 +509,7 @@ class History(object):
             releases_by_version = {release.version: release for release in releases}
 
             if self.history is not None:
-                for version, release in load_history(path=self.history, scope=self.scope).items():
+                for version, release in load_history(path=self.history, prefix=self.scope).items():
                     try:
                         releases_by_version[version].merge(release)
                     except KeyError:
@@ -502,7 +531,7 @@ class History(object):
             self.releases = releases
 
 
-def load_history(path, scope=None):
+def load_history(path, prefix=None):
     history = {}
     with open(path) as fh:
         contents = yaml.load(fh, Loader=yaml.SafeLoader)
@@ -510,17 +539,17 @@ def load_history(path, scope=None):
     if not isinstance(contents, dict):
         raise ValueError("Invalid configuration")
     for version_string, changes in contents.items():
-        try:
-            version = Version.from_string(version_string, scope)
-            if not isinstance(version_string, str) or not isinstance(changes, list):
-                raise ValueError("Invalid configuration")
-            messages = [parse_message(change) for change in changes]
-            commits = [Change(message=message) for message in messages]
-            commits.reverse()
-            release = Release(version, commits, is_released=True)
-            history[version] = release
-        except UnknownScope:
+        version = Version.from_string(version_string)
+        if version.prefix != prefix:
             logging.warning("Ignoring version '%s'...", version_string)
+            continue
+        if not isinstance(version_string, str) or not isinstance(changes, list):
+            raise ValueError("Invalid configuration")
+        messages = [parse_message(change) for change in changes]
+        commits = [Change(message=message) for message in messages]
+        commits.reverse()
+        release = Release(version, commits, is_released=True)
+        history[version] = release
     return history
 
 
@@ -550,32 +579,13 @@ class UnknownScope(ValueError):
     pass
 
 
-# TODO: Perhaps the tag and the version need to be implemented differently???
-# TODO: Consider allowing all scopes and then filtering after the fact.
-def parse_version_tag(tag, scope=None):
-    sv_parser = re.compile(r"^((.+?)_)?(\d+).(\d+).(\d+)(-([A-Za-z]+)(\.(\d+))?)?$")
-    match = sv_parser.match(tag)
-    if match:
-        tag_scope = match.group(2)
-        tag_pre_release_prefix = match.group(7)
-        if tag_scope != scope:
-            raise UnknownScope("'%s' contains unknown scope." % tag)
-        pre_release = None
-        if tag_pre_release_prefix is not None:
-            tag_pre_release_version = int(match.group(9)) if match.group(9) is not None else 0
-            pre_release = PreRelease(tag_pre_release_prefix, tag_pre_release_version)
-        return Version(major=int(match.group(3)),
-                       minor=int(match.group(4)),
-                       patch=int(match.group(5)),
-                       pre_release=pre_release)
-    raise ValueError("'%s' is not a valid version." % tag)
-
-
-def versions_from_tags(tags, scope=None):
+def versions_from_tags(tags, prefix):
     versions = []
     for tag in tags:
         try:
-            versions.append(parse_version_tag(tag, scope))
+            version = Version.from_string(tag)
+            if version.prefix == prefix:
+                versions.append(version)
         except ValueError:
             pass
     return versions
@@ -592,7 +602,7 @@ def get_commits(scope=None):
     tags = get_tags()
     versions = collections.defaultdict(list)
     for sha, sha_tags in tags.items():
-        versions[sha] = versions_from_tags(sha_tags, scope=scope)
+        versions[sha] = versions_from_tags(sha_tags, prefix=scope)
 
     results = []
     command = ["git", "log", "--pretty=format:%H:%s"]
@@ -841,7 +851,7 @@ def command_notes(options):
 
 
 @cli.command("scopes", help="show all the unique scopes used within the repository")
-def command_scopes(options):
+def command_scopes(options) -> None:
     scopes = set([commit.message.scope for commit in get_commits() if commit.message.scope is not None])
     for scope in sorted(scopes):
       print(scope)
