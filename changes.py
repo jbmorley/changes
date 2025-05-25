@@ -652,12 +652,17 @@ def group_changes(changes):
     return results
 
 
+def regex_replace(s, find, replace):
+    return re.sub(find, replace, s)
+
+
 def format_notes(releases, template):
     loader = jinja2.ChoiceLoader([
         AbsolutePathLoader(),
         jinja2.FileSystemLoader(TEMPLATES_DIRECTORY),
     ])
     environment = jinja2.Environment(loader=loader)
+    environment.filters['regex_replace'] = regex_replace
     return environment.get_template(template).render(releases=releases, Sections=Sections).rstrip() + "\n"
 
 
