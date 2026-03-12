@@ -9,6 +9,9 @@ verify_ssl = true
 jinja2 = "*"
 pyyaml = "*"
 
+[dev-packages]
+build = "*"
+
 [requires]
 
 python_version = "3"
