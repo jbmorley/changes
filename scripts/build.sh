@@ -39,7 +39,7 @@ export VERSION=$(changes version)
 export RELEASED_VERSION=$(changes version --released)
 
 # Build the package.
-python -m build
+pipenv run python -m build
 
 # Check if the package needs a release and report it to GitHub Actions.
 if [[ "$VERSION" == "$RELEASED_VERSION" ]]; then
