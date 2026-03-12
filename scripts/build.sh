@@ -1,4 +1,6 @@
-# Copyright (c) 2021 InSeven Limited
+#!/bin/bash
+
+# Copyright (c) 2021-2024 Jason Morley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,45 +20,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: test
+set -e
+set -o pipefail
+set -x
+set -u
 
-on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches: [ main ]
-  schedule:
-    - cron:  '0 9 * * *'
-  workflow_dispatch:
+SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
 
-jobs:
-  test:
+# Configure the path.
+PATH=$PATH:"$ROOT_DIRECTORY"
 
-    name: test
-    runs-on: ubuntu-latest
+# Write outputs to /dev/null if we're not running under GitHub Actions.
+GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
-    steps:
+# Determine the version.
+export VERSION=$(changes version)
+export RELEASED_VERSION=$(changes version --released)
 
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-        fetch-depth: 0
+# Build the package.
+python -m build
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pipenv wheel
-        pipenv install
-
-    - id: build
-      name: Build the package
-      run: scripts/build.sh
-
-    - name: Run tests
-      run: scripts/test.sh
-
-    - name: Create release
-      run: scripts/release.sh
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.ref == 'refs/heads/main' }}
+# Check if the package needs a release and report it to GitHub Actions.
+if [[ "$VERSION" == "$RELEASED_VERSION" ]]; then
+    echo "needs_release=false" >> "$GITHUB_OUTPUT"
+else
+    echo "needs_release=true" >> "$GITHUB_OUTPUT"
+fi

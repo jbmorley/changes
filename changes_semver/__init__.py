@@ -1,4 +1,6 @@
-# Copyright (c) 2021 InSeven Limited
+#!/usr/bin/env python3
+
+# Copyright (c) 2021-2024 Jason Morley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,45 +20,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: test
-
-on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches: [ main ]
-  schedule:
-    - cron:  '0 9 * * *'
-  workflow_dispatch:
-
-jobs:
-  test:
-
-    name: test
-    runs-on: ubuntu-latest
-
-    steps:
-
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-        fetch-depth: 0
-
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pipenv wheel
-        pipenv install
-
-    - id: build
-      name: Build the package
-      run: scripts/build.sh
-
-    - name: Run tests
-      run: scripts/test.sh
-
-    - name: Create release
-      run: scripts/release.sh
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.ref == 'refs/heads/main' }}
+from . import *

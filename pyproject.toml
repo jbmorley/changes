@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
+
+[project]
+name = "changes-semver"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+  {name = "Jason Morley", email = "hello@jbmorley.co.uk"}
+]
+dependencies = [
+  "jinja2",
+  "pyyaml",
+]
+dynamic = ["version"]
+
+[project.scripts]
+changes = "changes_semver.changes:main"

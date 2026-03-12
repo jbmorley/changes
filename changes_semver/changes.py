@@ -884,7 +884,3 @@ def main():
     if "--scope" in sys.argv:
         parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
     parser.run()
-
-
-if __name__ == "__main__":
-    main()
