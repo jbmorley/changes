@@ -898,9 +898,9 @@ def main():
     verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
     parser = fastcommand.CommandParser(prog="changes",
-                               description=DESCRIPTION,
-                               epilog=EPILOG,
-                               formatter_class=argparse.RawDescriptionHelpFormatter)
+                                       description=DESCRIPTION,
+                                       epilog=EPILOG,
+                                       formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:
         parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
