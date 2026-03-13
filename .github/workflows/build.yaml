@@ -30,9 +30,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
 
-    name: test
+    name: build
     runs-on: ubuntu-latest
 
     steps:

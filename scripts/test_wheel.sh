@@ -35,3 +35,4 @@ WHEEL=`ls dist/changes_semver-*.whl`
 pip3 install "$WHEEL"
 which changes
 changes version
+changes notes
