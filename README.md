@@ -1,6 +1,6 @@
 # Changes
 
-[![Build](https://github.com/jbmorley/changes/actions/workflows/test.yaml/badge.svg)](https://github.com/jbmorley/changes/actions/workflows/test.yaml)
+[![build](https://github.com/jbmorley/changes/actions/workflows/build.yaml/badge.svg)](https://github.com/jbmorley/changes/actions/workflows/build.yaml)
 
 Lightweight and (hopefully) unopinionated tool for working with [Conventional Commits](https://www.conventionalcommits.org/) and [Semantic Versioning](https://semver.org).
 
