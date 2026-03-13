@@ -33,4 +33,5 @@ RELEASE_SCRIPT="$ROOT_DIRECTORY/examples/gh-release.sh"
 WHEEL=`ls dist/changes_semver-*.whl`
 
 pip3 install "$WHEEL"
-changes
+which changes
+changes version
