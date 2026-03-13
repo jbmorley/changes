@@ -28,9 +28,9 @@ import common
 
 from common import EmptyCommit, Repository, Tag
 
-import changes
+import changes_semver.changes as changes
 
-from changes import Change, History, Message, Type, Version
+from changes_semver.changes import Change, History, Message, Type, Version
 
 
 class HistoryTestCase(unittest.TestCase):
