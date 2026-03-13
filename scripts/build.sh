@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2021 InSeven Limited
+# Copyright (c) 2021-2024 Jason Morley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,33 +22,36 @@
 
 set -e
 set -o pipefail
+set -x
 set -u
 
-SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
-TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
+ROOT_DIRECTORY="$( cd "$( dirname "$( dirname "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )"
+BUILD_DIRECTORY="$ROOT_DIRECTORY/dist"
 
-# Process the command line arguments.
-POSITIONAL=()
-while [[ $# -gt 0 ]]
-do
-    key="$1"
-    case $key in
-        --debug)
-        export DEBUG=1
-        shift
-        ;;
-        *)
-        POSITIONAL+=("$1")
-        shift
-        ;;
-    esac
-done
-set -- "${POSITIONAL[@]:-}" # restore positional parameters
+CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
 
-cd "$TESTS_DIRECTORY"
-if [[ ! -z "$1" ]] ; then
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest "$1" --verbose
+# Configure the path.
+PATH=$PATH:"$ROOT_DIRECTORY"
+
+# Write outputs to /dev/null if we're not running under GitHub Actions.
+GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
+
+# Clean up and recreate the output directories.
+if [ -d "$BUILD_DIRECTORY" ] ; then
+    rm -r "$BUILD_DIRECTORY"
+fi
+mkdir -p "$BUILD_DIRECTORY"
+
+# Determine the version.
+export VERSION=$($CHANGES_SCRIPT version)
+export RELEASED_VERSION=$($CHANGES_SCRIPT version --released)
+
+# Build the package.
+pipenv run python -m build
+
+# Check if the package needs a release and report it to GitHub Actions.
+if [[ "$VERSION" == "$RELEASED_VERSION" ]]; then
+    echo "needs_release=false" >> "$GITHUB_OUTPUT"
 else
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest discover --verbose
+    echo "needs_release=true" >> "$GITHUB_OUTPUT"
 fi

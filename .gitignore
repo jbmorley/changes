@@ -1,3 +1,6 @@
 .DS_Store
-Pipfile.lock
 .nova
+/build
+/dist
+/changes_semver.egg-info
+Pipfile.lock

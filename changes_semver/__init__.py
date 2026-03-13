@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-# Copyright (c) 2021 InSeven Limited
+# Copyright (c) 2021-2024 Jason Morley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-set -e
-set -o pipefail
-set -u
-
-SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
-TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
-
-# Process the command line arguments.
-POSITIONAL=()
-while [[ $# -gt 0 ]]
-do
-    key="$1"
-    case $key in
-        --debug)
-        export DEBUG=1
-        shift
-        ;;
-        *)
-        POSITIONAL+=("$1")
-        shift
-        ;;
-    esac
-done
-set -- "${POSITIONAL[@]:-}" # restore positional parameters
-
-cd "$TESTS_DIRECTORY"
-if [[ ! -z "$1" ]] ; then
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest "$1" --verbose
-else
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest discover --verbose
-fi
+from . import *

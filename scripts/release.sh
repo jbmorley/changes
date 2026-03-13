@@ -20,9 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIRECTORY="${SCRIPTS_DIRECTORY}/.."
-CHANGES_SCRIPT="${ROOT_DIRECTORY}/changes"
-RELEASE_SCRIPT="${ROOT_DIRECTORY}/examples/gh-release.sh"
+set -e
+set -o pipefail
+set -x
+set -u
 
-"${CHANGES_SCRIPT}" --verbose release --skip-if-empty --push --command "\"${RELEASE_SCRIPT}\"" "\"$@\""
+SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
+CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
+RELEASE_SCRIPT="$ROOT_DIRECTORY/examples/gh-release.sh"
+
+WHEEL=`ls dist/changes_semver-*.whl`
+
+"$CHANGES_SCRIPT" --verbose release --skip-if-empty --push --exec "$RELEASE_SCRIPT" "$WHEEL"

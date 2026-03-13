@@ -22,33 +22,17 @@
 
 set -e
 set -o pipefail
+set -x
 set -u
 
 SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
-TESTS_DIRECTORY="$ROOT_DIRECTORY/tests"
+CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
+RELEASE_SCRIPT="$ROOT_DIRECTORY/examples/gh-release.sh"
 
-# Process the command line arguments.
-POSITIONAL=()
-while [[ $# -gt 0 ]]
-do
-    key="$1"
-    case $key in
-        --debug)
-        export DEBUG=1
-        shift
-        ;;
-        *)
-        POSITIONAL+=("$1")
-        shift
-        ;;
-    esac
-done
-set -- "${POSITIONAL[@]:-}" # restore positional parameters
+WHEEL=`ls dist/changes_semver-*.whl`
 
-cd "$TESTS_DIRECTORY"
-if [[ ! -z "$1" ]] ; then
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest "$1" --verbose
-else
-    PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile" pipenv run python3 -m unittest discover --verbose
-fi
+pip3 install "$WHEEL"
+which changes
+changes version
+changes notes

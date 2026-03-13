@@ -32,7 +32,7 @@ ROOT_DIRECTORY = os.path.dirname(TESTS_DIRECTORY)
 
 sys.path.append(ROOT_DIRECTORY)
 
-from changes import Chdir
+from changes_semver.changes import Chdir
 
 
 debug = False

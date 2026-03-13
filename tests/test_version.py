@@ -26,9 +26,7 @@ import unittest
 
 import common
 
-import changes
-
-from changes import PreRelease, Version
+from changes_semver.changes import PreRelease, Version
 
 
 class VersionTestCase(unittest.TestCase):
