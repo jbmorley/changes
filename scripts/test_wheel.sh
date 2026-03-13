@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright (c) 2021 InSeven Limited
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,46 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-name: test
+set -e
+set -o pipefail
+set -x
+set -u
 
-on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches: [ main ]
-  schedule:
-    - cron:  '0 9 * * *'
-  workflow_dispatch:
+SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
+CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
+RELEASE_SCRIPT="$ROOT_DIRECTORY/examples/gh-release.sh"
 
-jobs:
-  test:
+WHEEL=`ls dist/changes_cli-*.whl`
 
-    name: test
-    runs-on: ubuntu-latest
-
-    steps:
-
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-        fetch-depth: 0
-
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pipenv wheel
-        pipenv install
-        pipenv install --dev
-
-    - id: build
-      name: Build the package
-      run: scripts/build.sh
-
-    - name: Run tests
-      run: scripts/test.sh
-
-    - name: Create release
-      run: scripts/release.sh
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.ref == 'refs/heads/main' }}
+pip3 install "$WHEEL"
+changes

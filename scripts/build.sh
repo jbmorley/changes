@@ -25,8 +25,10 @@ set -o pipefail
 set -x
 set -u
 
-SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
+ROOT_DIRECTORY="$( cd "$( dirname "$( dirname "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )"
+BUILD_DIRECTORY="$ROOT_DIRECTORY/dist"
+
+CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
 
 # Configure the path.
 PATH=$PATH:"$ROOT_DIRECTORY"
@@ -34,9 +36,15 @@ PATH=$PATH:"$ROOT_DIRECTORY"
 # Write outputs to /dev/null if we're not running under GitHub Actions.
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
+# Clean up and recreate the output directories.
+if [ -d "$BUILD_DIRECTORY" ] ; then
+    rm -r "$BUILD_DIRECTORY"
+fi
+mkdir -p "$BUILD_DIRECTORY"
+
 # Determine the version.
-export VERSION=$(changes version)
-export RELEASED_VERSION=$(changes version --released)
+export VERSION=$($CHANGES_SCRIPT version)
+export RELEASED_VERSION=$($CHANGES_SCRIPT version --released)
 
 # Build the package.
 pipenv run python -m build

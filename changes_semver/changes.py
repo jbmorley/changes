@@ -34,7 +34,7 @@ import tempfile
 import jinja2
 import yaml
 
-import cli
+from . import cli
 
 
 CHANGES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
