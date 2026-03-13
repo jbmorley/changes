@@ -31,10 +31,9 @@ import subprocess
 import sys
 import tempfile
 
+import fastcommand
 import jinja2
 import yaml
-
-from . import cli
 
 
 CHANGES_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
@@ -686,11 +685,11 @@ def assert_is_repository(path):
         path = parent
 
 
-@cli.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
-    cli.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
-    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
+@fastcommand.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
+    fastcommand.Argument("--scope", help="scope to be used in tags and commit messages"),
+    fastcommand.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
+    fastcommand.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
+    fastcommand.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
 ])
 def command_version(options):
     path = os.getcwd()
@@ -703,17 +702,17 @@ def command_version(options):
     print(history.releases[0].version)
 
 
-@cli.command("release", help="tag the commit as a new release", formatter_class=argparse.RawDescriptionHelpFormatter, arguments=[
-    cli.Argument("--scope", help="scope to be used in tags and commit messages"),
-    cli.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
-    cli.Argument("--command", help="additional command to run during the release; if the command fails, the release will be rolled back (cannot be used alongside --exec)"),
-    cli.Argument("--exec", help="executable to run to during the release; if the executable fails, the release will be rolled back (cannot be used alongside --command)"),
-    cli.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
-    cli.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
-    cli.Argument("--template", help="custom Jinja2 template"),
-    cli.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
-    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
-    cli.Argument("arguments", nargs="*", help="arguments to pass to the release command"),
+@fastcommand.command("release", help="tag the commit as a new release", formatter_class=argparse.RawDescriptionHelpFormatter, arguments=[
+    fastcommand.Argument("--scope", help="scope to be used in tags and commit messages"),
+    fastcommand.Argument("--skip-if-empty", action="store_true", default=False, help="exit cleanly if there are no changes to release"),
+    fastcommand.Argument("--command", help="additional command to run during the release; if the command fails, the release will be rolled back (cannot be used alongside --exec)"),
+    fastcommand.Argument("--exec", help="executable to run to during the release; if the executable fails, the release will be rolled back (cannot be used alongside --command)"),
+    fastcommand.Argument("--push", action="store_true", default=False, help="push the newly created tag"),
+    fastcommand.Argument("--dry-run", action="store_true", default=False, help="perform a dry run, only logging the operations that would be performed"),
+    fastcommand.Argument("--template", help="custom Jinja2 template"),
+    fastcommand.Argument("--pre-release", action="store_true", default=False, help="generate a pre-release version"),
+    fastcommand.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
+    fastcommand.Argument("arguments", nargs="*", help="arguments to pass to the release command"),
 ], epilog="""
 When calling a script specified by `--command` or `--exec`, Changes defines a number of environment variables:
 
@@ -841,15 +840,15 @@ class AbsolutePathLoader(jinja2.BaseLoader):
         return source, path, lambda: mtime == os.path.getmtime(path)
 
 
-@cli.command("notes", help="output the release notes", arguments=[
-    cli.Argument("--scope", help="filter the release notes to the given scope"),
-    cli.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
-    cli.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
-    cli.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
-    cli.Argument("--pre-release", action="store_true", default=False, help="include pre-release versions"),
-    cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
-    cli.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
-    cli.Argument("--template", help="custom Jinja2 template")
+@fastcommand.command("notes", help="output the release notes", arguments=[
+    fastcommand.Argument("--scope", help="filter the release notes to the given scope"),
+    fastcommand.Argument("--skip-unreleased", action="store_true", help="skip unreleased versions"),
+    fastcommand.Argument("--history", help="file containing changes for versions not adhereing to Conventional Commits"),
+    fastcommand.Argument("--released", action="store_true", default=False, help="show only released versions; display the most recent released version, or all versions if the '--all' flag is specified"),
+    fastcommand.Argument("--pre-release", action="store_true", default=False, help="include pre-release versions"),
+    fastcommand.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
+    fastcommand.Argument("--all", action="store_true", default=False, help="output release notes for all versions"),
+    fastcommand.Argument("--template", help="custom Jinja2 template")
 ])
 def command_notes(options):
     path = os.getcwd()
@@ -872,7 +871,7 @@ def command_notes(options):
         print(format_notes(releases=[history.releases[0]], template=template), end="")
 
 
-@cli.command("scopes", help="show all the unique scopes used within the repository")
+@fastcommand.command("scopes", help="show all the unique scopes used within the repository")
 def command_scopes(options) -> None:
     path = os.getcwd()
     assert_is_repository(path)
@@ -898,10 +897,10 @@ You can find out more about Conventional Commits and Semantic Versioning at the 
 def main():
     verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
-    parser = cli.CommandParser(prog="changes",
-                               description=DESCRIPTION,
-                               epilog=EPILOG,
-                               formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = fastcommand.CommandParser(prog="changes",
+                                       description=DESCRIPTION,
+                                       epilog=EPILOG,
+                                       formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:
         parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
