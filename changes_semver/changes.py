@@ -675,6 +675,17 @@ def resolve_scope(options):
         return None
 
 
+def assert_is_repository(path):
+    while True:
+        if os.path.exists(os.path.join(path, ".git")):
+            return
+        parent = os.path.dirname(path)
+        if parent == path:  # Indicates we're already at the top level.
+            logging.error("Not a git repository.")
+            exit(1)
+        path = parent
+
+
 @cli.command("version", help="output the current version as determined by taking the the most recent version tag and applying any subsequent changes; if there have been no changes since the most recent version tag, this will output the version of the most recent tag", arguments=[
     cli.Argument("--scope", help="scope to be used in tags and commit messages"),
     cli.Argument("--released", action="store_true", default=False, help="scope to be used in tags and commit messages"),
@@ -682,7 +693,9 @@ def resolve_scope(options):
     cli.Argument("--pre-release-prefix", type=str, default="rc", help="prefix to be used when generating a pre-release version (defaults to 'rc')"),
 ])
 def command_version(options):
-    history = History(path=os.getcwd(),
+    path = os.getcwd()
+    assert_is_repository(path)
+    history = History(path=path,
                       scope=resolve_scope(options),
                       skip_unreleased=options.released,
                       pre_release=options.pre_release,
@@ -715,13 +728,15 @@ When calling a script specified by `--command` or `--exec`, Changes defines a nu
   CHANGES_NOTES_FILE           path to a file containing the release notes
 """)
 def command_release(options):
+    path = os.getcwd()
+    assert_is_repository(path)
 
     if options.command is not None and options.exec is not None:
         logging.error("--command and --exec cannot be used together.")
         exit(1)
 
     scope = resolve_scope(options)
-    history = History(path=os.getcwd(),
+    history = History(path=path,
                       scope=scope,
                       pre_release=options.pre_release,
                       pre_release_prefix=options.pre_release_prefix)
@@ -837,7 +852,9 @@ class AbsolutePathLoader(jinja2.BaseLoader):
     cli.Argument("--template", help="custom Jinja2 template")
 ])
 def command_notes(options):
-    history = History(path=os.getcwd(),
+    path = os.getcwd()
+    assert_is_repository(path)
+    history = History(path=path,
                       history=options.history,
                       scope=resolve_scope(options),
                       skip_unreleased=options.released,
@@ -857,6 +874,8 @@ def command_notes(options):
 
 @cli.command("scopes", help="show all the unique scopes used within the repository")
 def command_scopes(options) -> None:
+    path = os.getcwd()
+    assert_is_repository(path)
     scopes = set([commit.message.scope for commit in get_commits() if commit.message.scope is not None])
     for scope in sorted(scopes):
       print(scope)
@@ -879,7 +898,10 @@ You can find out more about Conventional Commits and Semantic Versioning at the 
 def main():
     verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
-    parser = cli.CommandParser(description=DESCRIPTION, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = cli.CommandParser(prog="changes",
+                               description=DESCRIPTION,
+                               epilog=EPILOG,
+                               formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
     if "--scope" in sys.argv:
         parser.add_argument("--scope", dest="legacy_scope", help="scope to be used in tags and commit messages")
