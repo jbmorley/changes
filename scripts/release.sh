@@ -30,6 +30,6 @@ ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
 CHANGES_SCRIPT="$ROOT_DIRECTORY/changes"
 RELEASE_SCRIPT="$ROOT_DIRECTORY/examples/gh-release.sh"
 
-WHEEL=`ls dist/changes_cli-*.whl`
+WHEEL=`ls dist/changes_semver-*.whl`
 
 "$CHANGES_SCRIPT" --verbose release --skip-if-empty --push --exec "$RELEASE_SCRIPT" "$WHEEL"
