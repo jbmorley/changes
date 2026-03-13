@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 name: build
-
 on:
   pull_request:
     branches: [ main ]
@@ -31,9 +30,11 @@ on:
 
 jobs:
   build:
-
-    name: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      needs_release: ${{ steps.build.outputs.needs_release }}
 
     steps:
 
