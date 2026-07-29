@@ -1,4 +1,4 @@
-# changes-semver
+# Changes
 
 [![build](https://github.com/jbmorley/changes/actions/workflows/build.yaml/badge.svg)](https://github.com/jbmorley/changes/actions/workflows/build.yaml)
 
