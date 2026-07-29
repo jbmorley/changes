@@ -74,6 +74,26 @@ Or see the details of specific sub-commands by passing the `--help` flag directl
 changes release --help
 ```
 
+### Alternative Histories
+
+Sometimes you might need to provide your own list of changes for specific releases—this can be helpful if you forgot to adhere to Conventional Commits or, perhaps, you want to provide a custom list of changes for your initial release. Changes supports this, allowing you to replace the list of changes for any release specified a simple YAML file:
+
+1. Create a YAML file containing the releases you want to change. For example,
+   ```yaml
+   "1.0.0":
+   - "feat: Initial release"
+   ```
+
+2. Pass this alternative history file to any changes command:
+
+   ```sh
+   changes notes --history history.yaml
+   ```
+
+> [!NOTE]
+>
+> Changes replaces all the changes in the named releases with those listed in the YAML file; you will need to manually include any change you want listed for releases you override.
+
 ## Development
 
 ### Setup
