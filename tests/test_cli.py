@@ -990,7 +990,7 @@ fi
 - Foo
 """)
 
-    def test_notes_additional_history_merges_changes(self):
+    def test_notes_additional_history_overrides_changes(self):
         with Repository() as repository:
             repository.perform([
                 EmptyCommit("initial commit"),
@@ -1011,7 +1011,6 @@ fi
 
 - Baz
 - Bar
-- New and exciting
 
 **Fixes**
 

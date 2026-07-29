@@ -401,9 +401,6 @@ class Release(object):
     def is_initial_development(self):
         return self.version.is_initial_development
 
-    def merge(self, release):
-        self.changes.extend(release.changes)
-
     @property
     def sections(self):
         return group_changes(self.changes)
@@ -510,7 +507,7 @@ class History(object):
             if self.history is not None:
                 for version, release in load_history(path=self.history, prefix=self.scope).items():
                     try:
-                        releases_by_version[version].merge(release)
+                        releases_by_version[version].changes = release.changes
                     except KeyError:
                         releases_by_version[version] = release
 
