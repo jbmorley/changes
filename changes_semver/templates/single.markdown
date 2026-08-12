@@ -3,7 +3,7 @@
 **{{ section.title }}**
 
 {% for change in section.changes | reverse -%}
-- {{ change.description }}{% if change.scope %}{{ change.scope }}{% endif %}
+- {% if change.scope %}{{ change.scope }}: {% endif %}{{ change.description }}
 {% endfor %}
 {% endfor %}
 {% endfor %}
