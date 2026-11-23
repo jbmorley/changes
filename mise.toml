@@ -1,3 +1,11 @@
 [tools]
 
 python = "3.12.13"
+uv = "0.13.9"
+
+"pipx:build" = "latest"
+"pipx:pipenv" = "latest"
+
+[env]
+
+UV_PYTHON_PREFERENCE = "only-system"
