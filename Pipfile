@@ -10,9 +10,6 @@ fastcommand = "*"
 jinja2 = "*"
 pyyaml = "*"
 
-[dev-packages]
-build = "*"
-
 [requires]
 
 python_version = "3.12"

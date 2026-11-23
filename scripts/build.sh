@@ -47,7 +47,7 @@ export VERSION=$($CHANGES_SCRIPT version)
 export RELEASED_VERSION=$($CHANGES_SCRIPT version --released)
 
 # Build the package.
-pipenv run python -m build
+pyproject-build -o "$BUILD_DIRECTORY"
 
 # Check if the package needs a release and report it to GitHub Actions.
 if [[ "$VERSION" == "$RELEASED_VERSION" ]]; then

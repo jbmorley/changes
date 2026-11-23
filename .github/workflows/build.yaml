@@ -64,12 +64,6 @@ jobs:
         version: 2026.9.10
         cache: false
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pipenv wheel
-        pipenv install
-        pipenv install --dev
-
     - id: build
       name: Build the package
       run: scripts/build.sh
