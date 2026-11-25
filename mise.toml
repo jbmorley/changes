@@ -1,7 +1,7 @@
 [tools]
 
 python = "3.15.2"
-uv = "0.13.9"
+uv = "0.13.10"
 
 "pipx:build" = "latest"
 "pipx:pipenv" = "latest"
